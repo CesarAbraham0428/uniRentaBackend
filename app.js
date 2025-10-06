@@ -1,6 +1,10 @@
 import express from 'express'; 
 import cors from 'cors';
+
+import { manejadorErrores } from "./utils/errores/handlerErrors.js";
+
 import propiedadRoutes from './routes/propiedadRoutes.js';
+import renteroRoutes from './routes/renteroRoutes.js';
 
 import Unidad from './models/unidad.js';
 import Propiedad from './models/propiedad.js';
@@ -14,6 +18,11 @@ const app = express();
 app.use(cors()); 
 app.use(express.json()); 
 
-app.use('/api/propiedades', propiedadRoutes);
+app.use('/propiedades', propiedadRoutes);
+app.use('/renteros', renteroRoutes);
+
+
+
+app.use(manejadorErrores);
 
 export default app;
