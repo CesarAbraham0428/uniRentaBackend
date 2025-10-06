@@ -1,27 +1,36 @@
 import { DataTypes } from 'sequelize';
 import sequelize from '../config/baseDeDatos.js';
 
-const Rentero = sequelize.define('rentero', {
+const Propiedad = sequelize.define('propiedad', {
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
     autoIncrement: true
   },
+  rentero_id: {
+    type: DataTypes.INTEGER
+  },
   nombre: {
     type: DataTypes.STRING
   },
-  apellido: {
+  calle: {
     type: DataTypes.STRING
   },
-  email: {
+  colonia: {
     type: DataTypes.STRING
   },
-  password: {
+  numero: {
     type: DataTypes.STRING
   },
-  telefono: {
+  codigo_postal: {
     type: DataTypes.STRING
+  },
+  ubicacion: {
+    type: DataTypes.GEOMETRY('POINT', 4326)
+  },
+  visible: {
+    type: DataTypes.BOOLEAN
   }
 });
 
-export default Rentero;
+export default Propiedad;

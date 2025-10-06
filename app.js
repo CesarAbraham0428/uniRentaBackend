@@ -1,13 +1,19 @@
 import express from 'express'; 
-import cors from 'cors'; 
+import cors from 'cors';
+import propiedadRoutes from './routes/propiedadRoutes.js';
+
+import Unidad from './models/unidad.js';
+import Propiedad from './models/propiedad.js';
+import Rentero from './models/rentero.js';
+
+Unidad.belongsTo(Propiedad, { foreignKey: 'propiedad_id', as: 'propiedad' });
+Propiedad.belongsTo(Rentero, { foreignKey: 'rentero_id', as: 'rentero' });
 
 const app = express(); 
 
 app.use(cors()); 
 app.use(express.json()); 
 
-// Aquí en el futuro se van a agregar las rutas
-// import propiedadRoutes from './routes/propiedad.routes.js';
-// app.use('/api/propiedades', propiedadRoutes);
+app.use('/api/propiedades', propiedadRoutes);
 
 export default app;

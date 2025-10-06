@@ -1,27 +1,30 @@
 import { DataTypes } from 'sequelize';
 import sequelize from '../config/baseDeDatos.js';
 
-const Rentero = sequelize.define('rentero', {
+const Unidad = sequelize.define('unidad', {
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
     autoIncrement: true
   },
+  propiedad_id: {
+    type: DataTypes.INTEGER
+  },
   nombre: {
     type: DataTypes.STRING
   },
-  apellido: {
+  precio: {
+    type: DataTypes.DECIMAL
+  },
+  estado: {
     type: DataTypes.STRING
   },
-  email: {
-    type: DataTypes.STRING
+  descripcion: {
+    type: DataTypes.JSONB
   },
-  password: {
-    type: DataTypes.STRING
-  },
-  telefono: {
-    type: DataTypes.STRING
+  imagenes: {
+    type: DataTypes.JSONB
   }
 });
 
-export default Rentero;
+export default Unidad;
