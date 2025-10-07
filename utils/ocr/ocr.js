@@ -1,7 +1,7 @@
 import axios from "axios";
 import FormData from "form-data";
 import fs from "fs";
-import AppError from "../errors/appError.js";
+import ErrorAplicacion from "../errores/appError.js";
 
 const ocrClient = async (rutaArchivo) => {
   try {
@@ -18,13 +18,13 @@ const ocrClient = async (rutaArchivo) => {
     });
 
     if (response.data.IsErroredOnProcessing) {
-      throw new AppError("Error al procesar el documento con OCR.Space", 400);
+      throw new ErrorAplicacion("Error al procesar el documento con OCR.Space", 400);
     }
 
     const textoExtraido = response.data.ParsedResults[0].ParsedText;
     return textoExtraido;
   } catch (error) {
-    throw new AppError(error.message || "Error al conectar con OCR.Space", 500);
+    throw new ErrorAplicacion(error.message || "Error al conectar con OCR.Space", 500);
   }
 };
 

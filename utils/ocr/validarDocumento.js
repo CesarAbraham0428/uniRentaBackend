@@ -1,4 +1,4 @@
-import AppError from "../errors/appError.js";
+import {ErrorAplicacion} from "../errores/appError.js";
 
 /**
  * Verifica si el texto extraído contiene todos los campos requeridos.
@@ -13,7 +13,7 @@ const verificarDatos = (texto, camposRequeridos) => {
   );
 
   if (faltantes.length > 0) {
-    throw new AppError(
+    throw new ErrorAplicacion(
       `El documento no contiene la información requerida: ${faltantes.join(", ")}`,
       400
     );

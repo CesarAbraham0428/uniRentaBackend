@@ -1,9 +1,9 @@
 import express from 'express';
-import upload from "../middlewares/upload.js";
+import cargarArchivo from "../middlewares/cargarArchivo.js";
 import {registrarRentero} from '../controllers/renteroController.js';
 
 const router = express.Router();
 
-router.post('/registrar', upload.single("documento"), registrarRentero);
+router.post('/registrar', cargarArchivo.single("documento"), registrarRentero);
 
 export default router;
