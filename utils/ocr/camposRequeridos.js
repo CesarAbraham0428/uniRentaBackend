@@ -1,0 +1,2 @@
+export const INE = ["INSTITUTO NACIONAL ELECTORAL", "NOMBRE", "CURP"];
+export const RECIBO_LUZ = ["CALLE", "NÚMERO", "CÓDIGO POSTAL"];

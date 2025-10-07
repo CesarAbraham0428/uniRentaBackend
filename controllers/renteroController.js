@@ -2,11 +2,12 @@ import * as renteroService from "../services/renteroService.js";
 
 export const registrarRentero = async (req, res, next) => {
   try {
-    const rentero = await renteroService.registrarRentero(req.body);
+    const rutaDocumento = req.file.path;
+    const nuevoRentero = await renteroService.registrarRentero(req.body, rutaDocumento);
+
     res.status(201).json({
-      estado: "exito",
-      mensaje: "Rentero registrado correctamente",
-      datos: rentero
+      mensaje: "Rentero registrado correctamente.",
+      rentero: nuevoRentero,
     });
   } catch (error) {
     next(error);
