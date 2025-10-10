@@ -1,9 +1,10 @@
 import axios from "axios";
 import FormData from "form-data";
 import fs from "fs";
+
 import ErrorAplicacion from "../errores/appError.js";
 
-const ocrClient = async (rutaArchivo) => {
+const ocrAPi = async (rutaArchivo) => {
   try {
     const formData = new FormData();
     formData.append("file", fs.createReadStream(rutaArchivo));
@@ -28,4 +29,4 @@ const ocrClient = async (rutaArchivo) => {
   }
 };
 
-export default ocrClient;
+export default ocrAPi;

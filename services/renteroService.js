@@ -1,21 +1,33 @@
-import fs from "fs";
-import path from "path";
+// services/renteroService.js
 import validarDocumento from "../utils/ocr/validarDocumento.js";
-import rentero from "../models/rentero.js";
+import { moverArchivo, limpiarArchivoTemporal } from "./manejoArchivos.js";
+import Rentero from "../models/rentero.js";
+import Documento from "../models/documento.js";
 
 export const registrarRentero = async (datosRentero, rutaDocumento) => {
-  // Paso 1: Validar documento con OCR.Space
-  await validarDocumento(rutaDocumento, "rentero");
+  try {
+    // 1. Validar documento
+    await validarDocumento(rutaDocumento, "rentero");
+    
+    // 2. Mover archivo a ubicación final
+    const rutaFinal = moverArchivo(rutaDocumento, 'renteros/validos');
+    
+    // 3. Crear registros en la base de datos
+    const [nuevoRentero] = await Promise.all([
+      Rentero.create(datosRentero),
+      Documento.create({
+        rutaDocumento: rutaFinal,
+        tipo: 'rentero'
+      })
+    ]);
 
-  // Paso 2: Mover el archivo si fue válido
-  const carpetaFinal = path.join(process.cwd(), "uploads/renteros/validos");
-  if (!fs.existsSync(carpetaFinal)) fs.mkdirSync(carpetaFinal, { recursive: true });
-
-  const nuevaRuta = path.join(carpetaFinal, path.basename(rutaDocumento));
-  fs.renameSync(rutaDocumento, nuevaRuta);
-
-  // Paso 3: Crear rentero en la BD
-  const nuevoRentero = await rentero.create({datosRentero});
-
-  return nuevoRentero;
+    return { 
+      exito: true, 
+      mensaje: 'Rentero registrado exitosamente',
+      datos: { rentero: nuevoRentero }
+    };
+  } catch (error) {
+    limpiarArchivoTemporal(rutaDocumento);
+    throw error;
+  }
 };
