@@ -17,7 +17,7 @@ const Documento = sequelize.define('documento',{
     },
     propiedad_id:{
         type: DataTypes.INTEGER,
-        allowNull:false,
+        allowNull:true,
         references:{
             model:'propiedad',
             key:'id'

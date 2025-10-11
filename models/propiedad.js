@@ -33,4 +33,6 @@ const Propiedad = sequelize.define('propiedad', {
   }
 });
 
+
+
 export default Propiedad;

@@ -1,7 +1,7 @@
 import express from 'express'; 
 import cors from 'cors';
 
-import { manejadorErrores } from "./utils/errores/handlerErrors.js";
+import { manejadorErrores } from "./utils/errores/manejadorErrores.js";
 
 import propiedadRoutes from './routes/propiedadRoutes.js';
 import renteroRoutes from './routes/renteroRoutes.js';
