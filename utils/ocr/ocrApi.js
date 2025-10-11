@@ -2,7 +2,7 @@ import axios from "axios";
 import FormData from "form-data";
 import fs from "fs";
 
-import ErrorAplicacion from "../errores/appError.js";
+import {ErrorAplicacion} from "../errores/appError.js";
 
 const ocrAPi = async (rutaArchivo) => {
   try {

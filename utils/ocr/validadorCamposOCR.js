@@ -1,25 +1,27 @@
 import {ErrorAplicacion} from "../errores/appError.js";
+import tipoDocumento from "./camposRequeridos.js";
 
 /**
  * Verifica si el texto extraído contiene todos los campos requeridos.
- * @param {string} texto - Texto plano extraído del documento.
- * @param {Array} camposRequeridos - Lista de palabras o frases esperadas.
+ * @param {string} textoExtraido - Texto plano extraído del documento.
+ * @param {string} tipoDoc - Tipo de documento ('INE','RECIBO_LUZ',etc).
  */
-const verificarDatos = (texto, camposRequeridos) => {
-  const textoMayus = texto.toUpperCase();
 
-  const faltantes = camposRequeridos.filter(
-    campo => !textoMayus.includes(campo.toUpperCase())
-  );
+const verificarDatos = (textoExtraido, tipoDoc) => {
+  const textoMayus = textoExtraido.toUpperCase();
 
-  if (faltantes.length > 0) {
-    throw new ErrorAplicacion(
-      `El documento no contiene la información requerida: ${faltantes.join(", ")}`,
-      400
-    );
+  const camposRequeridos = tipoDocumento[tipoDoc];
+
+  if(camposRequeridos){
+    camposRequeridos.forEach((campo) => {
+      if (!textoMayus.includes(campo)) {
+        throw new ErrorAplicacion(
+          `El documento no contiene la información requerida`,
+          400
+        );
+      }
+    });
   }
-
-  return true;
 };
 
 export default verificarDatos;

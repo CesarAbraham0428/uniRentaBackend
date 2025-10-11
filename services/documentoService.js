@@ -3,36 +3,24 @@ import Documento from '../models/documento.js';
 import verificarDatos from '../utils/ocr/validadorCamposOCR.js';
 import { moverArchivo, limpiarArchivoTemporal } from '../utils/files/manejadorArchivos.js';
 
-export const guardarDocumento = async (rutaTemporal, tipo, renteroId = null, propiedadId = null) => {
+export const guardarDocumento = async (documento, tipo, renteroId = null, propiedadId = null) => {
   // Validar el documento con OCR
-  await verificarDatos(rutaTemporal, tipo);
+  const resultado = verificarDatos(documento, tipo);
   
-  // Mover el archivo a ubicación final
-  const rutaFinal = moverArchivo(rutaTemporal, `${tipo}s/validos`);
+  if (!resultado) {
+    throw new ErrorAplicacion('El documento no cumple con los requisitos', 400);
+  }else{
+    // Mover el archivo a ubicación final
+    const rutaFinal = moverArchivo(documento, `${tipo}s/validos`);
   
-  // Crear registro en la base de datos
-  const documento = await Documento.create({
+    // Crear registro en la base de datos
+    const documento = await Documento.create({
     ruta_archivo: rutaFinal,
     tipo,
     rentero_id: renteroId,
     propiedad_id: propiedadId
   });
+}
   
   return documento;
-};
-
-export const eliminarDocumento = async (documentoId) => {
-  // Primero obtener la ruta del archivo
-  const documento = await Documento.findByPk(documentoId);
-  if (!documento) {
-    throw new Error('Documento no encontrado');
-  }
-  
-  // Eliminar el registro de la base de datos
-  await Documento.destroy({ where: { id: documentoId } });
-  
-  // Opcional: Eliminar el archivo físico
-  limpiarArchivoTemporal(documento.ruta_archivo);
-  
-  return true;
 };

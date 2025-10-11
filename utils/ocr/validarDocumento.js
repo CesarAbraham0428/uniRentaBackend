@@ -1,6 +1,5 @@
 import ocrApi from "./ocrApi.js";
 import verificarDatos from "./validadorCamposOCR.js";
-import { INE, RECIBO_LUZ } from "./camposRequeridos.js";
 import { ErrorAplicacion } from "../errores/appError.js";
 
 /**
@@ -11,25 +10,11 @@ import { ErrorAplicacion } from "../errores/appError.js";
  */
 const validarDocumento = async (rutaArchivo, tipoDocumento) => {
   try {
-    // 1. Extraer texto del documento usando OCR
+    // Paso 1: Extraer texto del documento usando OCR
     const textoExtraido = await ocrApi(rutaArchivo);
     
-    // 2. Determinar qué campos validar según el tipo de documento
-    let camposAValidar = [];
-    
-    switch (tipoDocumento.toLowerCase()) {
-      case 'rentero':
-        // Para rentas, validamos INE y Recibo de Luz
-        await verificarDatos(textoExtraido, INE);
-        await verificarDatos(textoExtraido, RECIBO_LUZ);
-        break;
-      case 'estudiante':
-        // Para estudiantes, validamos solo INE
-        await verificarDatos(textoExtraido, INE);
-        break;
-      default:
-        throw new ErrorAplicacion('Tipo de documento no soportado', 400);
-    }
+    // Paso 2: Validar campos del documento
+    verificarDatos(textoExtraido, tipoDocumento);
 
     return true;
   } catch (error) {

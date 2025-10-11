@@ -1,4 +1,5 @@
-import { guardarDocumento } from './documentoService.js';
+import validarDocumento from '../utils/ocr/validarDocumento.js';
+import {ErrorAplicacion} from '../utils/errores/appError.js';
 
 /**
  * Registra un nuevo rentero con su documento de identificación
@@ -6,25 +7,29 @@ import { guardarDocumento } from './documentoService.js';
  * @param {string} rutaDocumento - Ruta temporal del documento subido
  * @returns {Promise<Object>} - Resultado de la operación
  */
-export const registrarRentero = async (datosRentero, rutaDocumento, tipo) => {
-  if (!rutaDocumento) {
+
+export const registrarRentero = async (documento, tipo, rentero_id, propiedad_id, datosRentero) => {
+  if (!documento) {
     throw new ErrorAplicacion('Debe proporcionar un documento válido', 400);
   }
 
   const transaccion = await sequelize.transaction();
   
   try {
-    // 1. Crear rentero
-    const nuevoRentero = await Rentero.create(datosRentero, { transaction: transaccion });
-    
-    // 2. Guardar documento usando el servicio
-    await guardarDocumento(
-      rutaDocumento,
+    // Paso 1: Guardar el documento
+    const nuevoDocumento = await validarDocumento(
+      documento,
       tipo,
-      nuevoRentero.id,
-      null
+      rentero_id,
+      propiedad_id
     );
 
+    // Paso 2: Crear rentero
+    const nuevoRentero = await Rentero.create({
+      ...datosRentero,
+      documento_id: nuevoDocumento.id
+    }, { transaction: transaccion });
+    
     await transaccion.commit();
     return { 
       exito: true, 
@@ -33,6 +38,6 @@ export const registrarRentero = async (datosRentero, rutaDocumento, tipo) => {
     };
   } catch (error) {
     await transaccion.rollback();
-    throw error;
+    throw new ErrorAplicacion(error.message, error.statusCode);
   }
 };
