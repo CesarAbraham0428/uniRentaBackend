@@ -1,10 +1,10 @@
-import PropiedadService from '../services/propiedadService.js';
+import PropiedadService from "../services/propiedadService.js";
 
 export const obtenerPropiedades = async (req, res) => {
   try {
     const unidades = await PropiedadService.obtenerTodasLasPropiedades();
 
-    const propiedadesFormateadas = unidades.map(unidad => {
+    const propiedadesFormateadas = unidades.map((unidad) => {
       const uniJSON = unidad.toJSON();
       return {
         id: uniJSON.id,
@@ -20,27 +20,29 @@ export const obtenerPropiedades = async (req, res) => {
           colonia: uniJSON.propiedad.colonia,
           numero: uniJSON.propiedad.numero,
           codigo_postal: uniJSON.propiedad.codigo_postal,
-          coordenadas: uniJSON.propiedad.ubicacion
+          municipio: uniJSON.propiedad.municipio,
+          estado: uniJSON.propiedad.estado,
+          coordenadas: uniJSON.propiedad.ubicacion,
         },
         rentero: {
           id: uniJSON.propiedad.rentero.id,
           nombre: `${uniJSON.propiedad.rentero.nombre} ${uniJSON.propiedad.rentero.apellido}`,
           telefono: uniJSON.propiedad.rentero.telefono,
-          email: uniJSON.propiedad.rentero.email
-        }
+          email: uniJSON.propiedad.rentero.email,
+        },
       };
     });
 
     res.status(200).json({
       success: true,
       cantidad: propiedadesFormateadas.length,
-      data: propiedadesFormateadas
+      data: propiedadesFormateadas,
     });
   } catch (error) {
-    console.error('Error en controller:', error);
+    console.error("Error en controller:", error);
     res.status(500).json({
       success: false,
-      message: 'Error al obtener propiedades'
+      message: "Error al obtener propiedades",
     });
   }
 };
@@ -52,7 +54,7 @@ export const obtenerPropiedadPorId = async (req, res) => {
     if (isNaN(id)) {
       return res.status(400).json({
         success: false,
-        message: 'ID inválido'
+        message: "ID inválido",
       });
     }
 
@@ -61,7 +63,7 @@ export const obtenerPropiedadPorId = async (req, res) => {
     if (!unidad) {
       return res.status(404).json({
         success: false,
-        message: 'Propiedad no encontrada'
+        message: "Propiedad no encontrada",
       });
     }
 
@@ -79,42 +81,58 @@ export const obtenerPropiedadPorId = async (req, res) => {
         calle: uniJSON.propiedad.calle,
         colonia: uniJSON.propiedad.colonia,
         numero: uniJSON.propiedad.numero,
+        municipio: uniJSON.propiedad.municipio,
+        estado: uniJSON.propiedad.estado,
         codigo_postal: uniJSON.propiedad.codigo_postal,
-        coordenadas: uniJSON.propiedad.ubicacion
+        coordenadas: uniJSON.propiedad.ubicacion,
       },
       rentero: {
         id: uniJSON.propiedad.rentero.id,
         nombre: `${uniJSON.propiedad.rentero.nombre} ${uniJSON.propiedad.rentero.apellido}`,
         telefono: uniJSON.propiedad.rentero.telefono,
-        email: uniJSON.propiedad.rentero.email
-      }
+        email: uniJSON.propiedad.rentero.email,
+      },
     };
 
     res.status(200).json({
       success: true,
-      data: propiedadFormateada
+      data: propiedadFormateada,
     });
   } catch (error) {
-    console.error('Error en controller:', error);
+    console.error("Error en controller:", error);
     res.status(500).json({
       success: false,
-      message: 'Error al obtener propiedad'
+      message: "Error al obtener propiedad",
     });
   }
 };
 
 export const obtenerPropiedadesConFiltros = async (req, res) => {
   try {
-    const { precioMin, precioMax, colonia } = req.query;
-    
+    const {
+      precioMin,
+      precioMax,
+      colonia,
+      municipio,
+      universidadId,
+      universidadNombre,
+      rangoKm,
+    } = req.query;
+
     const filtros = {};
     if (precioMin) filtros.precioMin = parseFloat(precioMin);
     if (precioMax) filtros.precioMax = parseFloat(precioMax);
     if (colonia) filtros.colonia = colonia;
+    if (municipio) filtros.municipio = municipio;
+    if (universidadId) filtros.universidadId = parseInt(universidadId, 10);
+    if (universidadNombre) filtros.universidadNombre = universidadNombre;
+    if (rangoKm) filtros.rangoKm = parseFloat(rangoKm);
 
-    const unidades = await PropiedadService.buscarPropiedadesConFiltros(filtros);
+    const unidades = await PropiedadService.buscarPropiedadesConFiltros(
+      filtros
+    );
 
-    const propiedadesFormateadas = unidades.map(unidad => {
+    const propiedadesFormateadas = unidades.map((unidad) => {
       const uniJSON = unidad.toJSON();
       return {
         id: uniJSON.id,
@@ -130,14 +148,16 @@ export const obtenerPropiedadesConFiltros = async (req, res) => {
           colonia: uniJSON.propiedad.colonia,
           numero: uniJSON.propiedad.numero,
           codigo_postal: uniJSON.propiedad.codigo_postal,
-          coordenadas: uniJSON.propiedad.ubicacion
+          municipio: uniJSON.propiedad.municipio, 
+          estado: uniJSON.propiedad.estado, 
+          coordenadas: uniJSON.propiedad.ubicacion,
         },
         rentero: {
           id: uniJSON.propiedad.rentero.id,
           nombre: `${uniJSON.propiedad.rentero.nombre} ${uniJSON.propiedad.rentero.apellido}`,
           telefono: uniJSON.propiedad.rentero.telefono,
-          email: uniJSON.propiedad.rentero.email
-        }
+          email: uniJSON.propiedad.rentero.email,
+        },
       };
     });
 
@@ -145,13 +165,13 @@ export const obtenerPropiedadesConFiltros = async (req, res) => {
       success: true,
       cantidad: propiedadesFormateadas.length,
       filtros: filtros,
-      data: propiedadesFormateadas
+      data: propiedadesFormateadas,
     });
   } catch (error) {
-    console.error('Error en controller:', error);
+    console.error("Error en controller:", error);
     res.status(500).json({
       success: false,
-      message: 'Error al filtrar propiedades'
+      message: "Error al filtrar propiedades",
     });
   }
 };

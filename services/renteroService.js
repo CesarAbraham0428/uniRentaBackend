@@ -1,21 +1,55 @@
-import fs from "fs";
-import path from "path";
-import validarDocumento from "../utils/ocr/validarDocumento.js";
-import rentero from "../models/rentero.js";
+import Rentero from '../models/rentero.js';
+import sequelize from '../config/baseDeDatos.js';
+import * as documentoService from './documentoService.js';
+import { limpiarArchivoTemporal } from '../utils/files/manejadorArchivos.js';
+import { ErrorBaseDatos, ErrorDocumento } from '../utils/errores/erroresDocumento.js';
 
-export const registrarRentero = async (datosRentero, rutaDocumento) => {
-  // Paso 1: Validar documento con OCR.Space
-  await validarDocumento(rutaDocumento, "rentero");
+export const registrarRentero = async (rutaDocumento, tipo, datosRentero) => {
+  if (!rutaDocumento) {
+    throw new ErrorDocumento('Debe proporcionar un documento válido');
+  }
 
-  // Paso 2: Mover el archivo si fue válido
-  const carpetaFinal = path.join(process.cwd(), "uploads/renteros/validos");
-  if (!fs.existsSync(carpetaFinal)) fs.mkdirSync(carpetaFinal, { recursive: true });
+  const transaccion = await sequelize.transaction();
 
-  const nuevaRuta = path.join(carpetaFinal, path.basename(rutaDocumento));
-  fs.renameSync(rutaDocumento, nuevaRuta);
+  try {
+    const nuevoRentero = await crearRentero(datosRentero, transaccion);
+    const { rutaFinal } = await documentoService.procesarDocumento(rutaDocumento, tipo);
+    const nuevoDocumento = await documentoService.guardarDocumento(
+      rutaFinal, 
+      tipo, 
+      nuevoRentero.id, 
+      null, 
+      transaccion
+    );
 
-  // Paso 3: Crear rentero en la BD
-  const nuevoRentero = await rentero.create({datosRentero});
+    await transaccion.commit();
+    
+    return {
+      exito: true,
+      mensaje: 'Rentero registrado exitosamente',
+      datos: { rentero: nuevoRentero, documento: nuevoDocumento }
+    };
+  } catch (error) {
+    await transaccion.rollback();
+    limpiarArchivoTemporal(rutaDocumento);
+    throw manejarErrorRegistro(error);
+  }
+};
 
-  return nuevoRentero;
+const crearRentero = async (datosRentero, transaccion) => {
+  return await Rentero.create(datosRentero, { transaction: transaccion });
+};
+
+const manejarErrorRegistro = (error) => {
+  if (error.name === 'SequelizeUniqueConstraintError') {
+    const camposDuplicados = error.errors.map(e => e.path).join(', ');
+    return new ErrorBaseDatos(`Ya existe un registro con el mismo ${camposDuplicados}`);
+  }
+  
+  if (error.name === 'SequelizeValidationError') {
+    const mensajesError = error.errors.map(e => e.message).join(', ');
+    return new ErrorBaseDatos(`Error de validación: ${mensajesError}`);
+  }
+  
+  return error;
 };

@@ -1,2 +1,7 @@
-export const INE = ["INSTITUTO NACIONAL ELECTORAL", "NOMBRE", "CURP"];
-export const RECIBO_LUZ = ["CALLE", "NÚMERO", "CÓDIGO POSTAL"];
+const tipoDocumento = {
+    "INE": ["NOMBRE"],
+    "RECIBO_LUZ": ["CALLE", "NÚMERO", "CÓDIGO POSTAL"]
+}
+
+
+export default tipoDocumento;

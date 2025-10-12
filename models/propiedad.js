@@ -1,5 +1,6 @@
 import { DataTypes } from 'sequelize';
 import sequelize from '../config/baseDeDatos.js';
+import Documento from './documento.js';
 
 const Propiedad = sequelize.define('propiedad', {
   id: {
@@ -26,11 +27,20 @@ const Propiedad = sequelize.define('propiedad', {
     type: DataTypes.STRING
   },
   ubicacion: {
-    type: DataTypes.GEOMETRY('POINT', 4326)
+    type: DataTypes.GEOGRAPHY('POINT', 4326)
   },
   visible: {
     type: DataTypes.BOOLEAN
-  }
+  },
+  municipio: {
+    type: DataTypes.STRING
+  },
+  estado: {
+    type: DataTypes.STRING
+  },
 });
+
+// Asociaciones
+Propiedad.hasMany(Documento, { foreignKey: 'propiedad_id' });
 
 export default Propiedad;

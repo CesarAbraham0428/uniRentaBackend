@@ -1,14 +1,21 @@
 import * as renteroService from "../services/renteroService.js";
+import { ErrorDocumento } from "../utils/errores/erroresDocumento.js";
 
 export const registrarRentero = async (req, res, next) => {
   try {
-    const rutaDocumento = req.file.path;
-    const nuevoRentero = await renteroService.registrarRentero(req.body, rutaDocumento);
+    if (!req.file) {
+      throw new ErrorDocumento('Debe proporcionar un documento válido');
+    }
 
-    res.status(201).json({
-      mensaje: "Rentero registrado correctamente.",
-      rentero: nuevoRentero,
-    });
+    const { tipo, ...datosRentero } = req.body;
+    
+    const resultado = await renteroService.registrarRentero(
+      req.file.path,
+      tipo,
+      datosRentero
+    );
+    
+    res.status(201).json(resultado);
   } catch (error) {
     next(error);
   }

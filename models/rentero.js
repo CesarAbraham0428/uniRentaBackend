@@ -1,7 +1,8 @@
 import { DataTypes } from 'sequelize';
 import sequelize from '../config/baseDeDatos.js';
+import Documento from './documento.js';
 
-const rentero = sequelize.define('rentero', {
+const Rentero = sequelize.define('rentero', {
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
@@ -24,4 +25,7 @@ const rentero = sequelize.define('rentero', {
   }
 });
 
-export default rentero;
+// Asociaciones
+Rentero.hasMany(Documento, { foreignKey: 'rentero_id' });
+
+export default Rentero;
