@@ -1,25 +1,29 @@
-import {ErrorAplicacion} from "../errores/appError.js";
+import ocrApi from "./ocrApi.js";
+import verificarDatos from "./validadorCamposOCR.js";
+import { ErrorAplicacion } from "../errores/appError.js";
 
 /**
- * Verifica si el texto extraído contiene todos los campos requeridos.
- * @param {string} texto - Texto plano extraído del documento.
- * @param {Array} camposRequeridos - Lista de palabras o frases esperadas.
+ * Valida un documento según su tipo utilizando OCR
+ * @param {string} rutaArchivo - Ruta al archivo a validar
+ * @param {string} tipoDocumento - Tipo de documento ('rentero' u otro)
+ * @returns {Promise<boolean>} - True si la validación es exitosa
  */
-const verificarDatos = (texto, camposRequeridos) => {
-  const textoMayus = texto.toUpperCase();
+const validarDocumento = async (rutaArchivo, tipoDocumento) => {
+  try {
+    // Paso 1: Extraer texto del documento usando OCR
+    const textoExtraido = await ocrApi(rutaArchivo);
+    
+    // Paso 2: Validar campos del documento
+    verificarDatos(textoExtraido, tipoDocumento);
 
-  const faltantes = camposRequeridos.filter(
-    campo => !textoMayus.includes(campo.toUpperCase())
-  );
-
-  if (faltantes.length > 0) {
+    return true;
+  } catch (error) {
+    // Si hay un error, lo relanzamos para que lo maneje el servicio
     throw new ErrorAplicacion(
-      `El documento no contiene la información requerida: ${faltantes.join(", ")}`,
-      400
+      `Error al validar el documento: ${error.message}`,
+      error.statusCode || 500
     );
   }
-
-  return true;
 };
 
-export default verificarDatos;
+export default validarDocumento;

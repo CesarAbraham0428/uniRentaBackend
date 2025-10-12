@@ -1,21 +1,43 @@
-import fs from "fs";
-import path from "path";
-import validarDocumento from "../utils/ocr/validarDocumento.js";
-import rentero from "../models/rentero.js";
+import validarDocumento from '../utils/ocr/validarDocumento.js';
+import {ErrorAplicacion} from '../utils/errores/appError.js';
 
-export const registrarRentero = async (datosRentero, rutaDocumento) => {
-  // Paso 1: Validar documento con OCR.Space
-  await validarDocumento(rutaDocumento, "rentero");
+/**
+ * Registra un nuevo rentero con su documento de identificación
+ * @param {Object} datosRentero - Datos del rentero a registrar
+ * @param {string} rutaDocumento - Ruta temporal del documento subido
+ * @returns {Promise<Object>} - Resultado de la operación
+ */
 
-  // Paso 2: Mover el archivo si fue válido
-  const carpetaFinal = path.join(process.cwd(), "uploads/renteros/validos");
-  if (!fs.existsSync(carpetaFinal)) fs.mkdirSync(carpetaFinal, { recursive: true });
+export const registrarRentero = async (documento, tipo, rentero_id, propiedad_id, datosRentero) => {
+  if (!documento) {
+    throw new ErrorAplicacion('Debe proporcionar un documento válido', 400);
+  }
 
-  const nuevaRuta = path.join(carpetaFinal, path.basename(rutaDocumento));
-  fs.renameSync(rutaDocumento, nuevaRuta);
+  const transaccion = await sequelize.transaction();
+  
+  try {
+    // Paso 1: Guardar el documento
+    const nuevoDocumento = await validarDocumento(
+      documento,
+      tipo,
+      rentero_id,
+      propiedad_id
+    );
 
-  // Paso 3: Crear rentero en la BD
-  const nuevoRentero = await rentero.create({datosRentero});
-
-  return nuevoRentero;
+    // Paso 2: Crear rentero
+    const nuevoRentero = await Rentero.create({
+      ...datosRentero,
+      documento_id: nuevoDocumento.id
+    }, { transaction: transaccion });
+    
+    await transaccion.commit();
+    return { 
+      exito: true, 
+      mensaje: 'Rentero registrado exitosamente',
+      datos: { rentero: nuevoRentero }
+    };
+  } catch (error) {
+    await transaccion.rollback();
+    throw new ErrorAplicacion(error.message, error.statusCode);
+  }
 };

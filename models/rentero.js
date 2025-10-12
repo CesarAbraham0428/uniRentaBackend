@@ -1,7 +1,7 @@
 import { DataTypes } from 'sequelize';
 import sequelize from '../config/baseDeDatos.js';
 
-const rentero = sequelize.define('rentero', {
+const Rentero = sequelize.define('rentero', {
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
@@ -24,4 +24,4 @@ const rentero = sequelize.define('rentero', {
   }
 });
 
-export default rentero;
+export default Rentero;
