@@ -1,32 +1,72 @@
 import axios from "axios";
 import FormData from "form-data";
 import fs from "fs";
+import { ErrorOCR } from "../errores/erroresDocumento.js";
 
-import {ErrorAplicacion} from "../errores/appError.js";
-
-const ocrAPi = async (rutaArchivo) => {
+const ocrApi = async (rutaArchivo) => {
   try {
-    const datosFormulario  = new FormData();
-    datosFormulario .append("file", fs.createReadStream(rutaArchivo));
-    datosFormulario .append("language", "spa");
-    datosFormulario .append("isOverlayRequired", false);
-
-    const respuesta = await axios.post("https://api.ocr.space/parse/image", datosFormulario , {
-      headers: {
-        apikey: process.env.OCR,
-        ...datosFormulario .getHeaders(),
-      },
-    });
-
-    if (respuesta.data.IsErroredOnProcessing) {
-      throw new ErrorAplicacion("Error al procesar el documento con OCR.Space", 400);
-    }
-
+    const datosFormulario = crearFormulario(rutaArchivo);
+    const respuesta = await enviarSolicitudOCR(datosFormulario);
+    
+    validarRespuestaOCR(respuesta.data);
+    
     const textoExtraido = respuesta.data.ParsedResults[0].ParsedText;
+    validarTextoExtraido(textoExtraido);
+    
     return textoExtraido;
   } catch (error) {
-    throw new ErrorAplicacion(error.message || "Error al conectar con OCR.Space", 500);
+    if (error instanceof ErrorOCR) {
+      throw error;
+    }
+    
+    if (error.response) {
+      throw new ErrorOCR(`Error en OCR.Space: ${error.response.data?.ErrorMessage || error.message}`);
+    }
+    
+    throw new ErrorOCR(error.message || "Error al conectar con OCR.Space");
   }
 };
 
-export default ocrAPi;
+const crearFormulario = (rutaArchivo) => {
+  const datosFormulario = new FormData();
+  const archivoStream = fs.createReadStream(rutaArchivo);
+  
+  datosFormulario.append("file", archivoStream);
+  datosFormulario.append("language", "spa");
+  datosFormulario.append("isOverlayRequired", "false");
+  
+  return datosFormulario;
+};
+
+const enviarSolicitudOCR = async (datosFormulario) => {
+  return await axios.post(
+    "https://api.ocr.space/parse/image",
+    datosFormulario,
+    {
+      headers: {
+        ...datosFormulario.getHeaders(),
+        apikey: process.env.OCR,
+      },
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity,
+    }
+  );
+};
+
+const validarRespuestaOCR = (data) => {
+  if (data.IsErroredOnProcessing) {
+    throw new ErrorOCR("Error al procesar el documento con OCR.Space");
+  }
+
+  if (!data.ParsedResults || data.ParsedResults.length === 0) {
+    throw new ErrorOCR("No se pudo extraer texto del documento");
+  }
+};
+
+const validarTextoExtraido = (texto) => {
+  if (!texto || texto.trim() === "") {
+    throw new ErrorOCR("El documento no contiene texto legible");
+  }
+};
+
+export default ocrApi;

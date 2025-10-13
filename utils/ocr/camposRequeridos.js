@@ -1,5 +1,5 @@
 const tipoDocumento = {
-    "INE": ["INSTITUTO NACIONAL ELECTORAL", "NOMBRE", "CURP"],
+    "INE": ["NOMBRE"],
     "RECIBO_LUZ": ["CALLE", "NÚMERO", "CÓDIGO POSTAL"]
 }
 

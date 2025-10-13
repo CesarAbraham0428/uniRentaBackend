@@ -5,9 +5,7 @@ export const moverArchivo = (rutaOrigen, carpetaDestino) => {
   const nombreArchivo = path.basename(rutaOrigen);
   const rutaCompleta = path.join(process.cwd(), 'uploads', carpetaDestino);
   
-  if (!fs.existsSync(rutaCompleta)) {
-    fs.mkdirSync(rutaCompleta, { recursive: true });
-  }
+  crearDirectorioSiNoExiste(rutaCompleta);
   
   const rutaDestino = path.join(rutaCompleta, nombreArchivo);
   fs.renameSync(rutaOrigen, rutaDestino);
@@ -16,7 +14,17 @@ export const moverArchivo = (rutaOrigen, carpetaDestino) => {
 };
 
 export const limpiarArchivoTemporal = (rutaArchivo) => {
-  if (rutaArchivo && fs.existsSync(rutaArchivo)) {
-    fs.unlinkSync(rutaArchivo);
+  try {
+    if (rutaArchivo && fs.existsSync(rutaArchivo)) {
+      fs.unlinkSync(rutaArchivo);
+    }
+  } catch (error) {
+    // Ignorar errores de limpieza
+  }
+};
+
+const crearDirectorioSiNoExiste = (ruta) => {
+  if (!fs.existsSync(ruta)) {
+    fs.mkdirSync(ruta, { recursive: true });
   }
 };

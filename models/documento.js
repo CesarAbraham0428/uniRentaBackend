@@ -5,7 +5,7 @@ const Documento = sequelize.define('documento',{
     id:{
         type: DataTypes.INTEGER,
         primaryKey:true,
-        autoincrement:true
+        autoIncrement:true
     },
     rentero_id:{
         type: DataTypes.INTEGER,
