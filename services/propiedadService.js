@@ -3,7 +3,7 @@ import Unidad from "../models/unidad.js";
 import Rentero from "../models/rentero.js";
 import Universidad from "../models/universidad.js";
 import { Op, fn, col, where } from "sequelize";
-import { ErrorAplicacion } from "../errores/appError.js";
+import {ErrorAplicacion} from '../utils/errores/appError.js';
 
 class PropiedadService {
   /**
