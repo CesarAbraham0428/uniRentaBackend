@@ -1,10 +1,11 @@
 import Rentero from '../models/rentero.js';
 import sequelize from '../config/baseDeDatos.js';
 import * as documentoService from './documentoService.js';
+
 import { limpiarArchivoTemporal } from '../utils/files/manejadorArchivos.js';
 import { ErrorBaseDatos, ErrorDocumento } from '../utils/errores/erroresDocumento.js';
 
-export const registrarRentero = async (rutaDocumento, tipo, datosRentero) => {
+export const registrarRentero = async (rutaDocumento, tipo_id, datosRentero) => {
   if (!rutaDocumento) {
     throw new ErrorDocumento('Debe proporcionar un documento válido');
   }
@@ -13,10 +14,10 @@ export const registrarRentero = async (rutaDocumento, tipo, datosRentero) => {
 
   try {
     const nuevoRentero = await crearRentero(datosRentero, transaccion);
-    const { rutaFinal } = await documentoService.procesarDocumento(rutaDocumento, tipo);
+    const { rutaFinal } = await documentoService.procesarDocumento(rutaDocumento, tipo_id);
     const nuevoDocumento = await documentoService.guardarDocumento(
       rutaFinal, 
-      tipo, 
+      tipo_id, 
       nuevoRentero.id, 
       null, 
       transaccion

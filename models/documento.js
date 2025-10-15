@@ -23,8 +23,13 @@ const Documento = sequelize.define('documento',{
             key:'id'
         }
     },
-    tipo:{
-        type: DataTypes.STRING
+    tipo_id:{
+        type: DataTypes.INTEGER,
+        allowNull:false,
+        references:{
+            model:'tipo_documento',
+            key:'id'
+        }
     },
     ruta_archivo:{
         type: DataTypes.STRING

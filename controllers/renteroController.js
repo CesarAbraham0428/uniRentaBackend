@@ -7,11 +7,11 @@ export const registrarRentero = async (req, res, next) => {
       throw new ErrorDocumento('Debe proporcionar un documento válido');
     }
 
-    const { tipo, ...datosRentero } = req.body;
+    const { tipo_id, ...datosRentero } = req.body;
     
     const resultado = await renteroService.registrarRentero(
       req.file.path,
-      tipo,
+      tipo_id,
       datosRentero
     );
     

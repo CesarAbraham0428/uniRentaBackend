@@ -2,8 +2,15 @@ import Propiedad from "../models/propiedad.js";
 import Unidad from "../models/unidad.js";
 import Rentero from "../models/rentero.js";
 import Universidad from "../models/universidad.js";
+
+import sequelize from '../config/baseDeDatos.js';
+import * as documentoService from './documentoService.js';
+
 import { Op, fn, col, where } from "sequelize";
-import {ErrorAplicacion} from '../utils/errores/appError.js';
+
+import { limpiarArchivoTemporal } from '../utils/files/manejadorArchivos.js';
+import { ErrorBaseDatos, ErrorDocumento } from '../utils/errores/erroresDocumento.js';
+import { ErrorAplicacion } from '../utils/errores/appError.js';
 
 class PropiedadService {
   async obtenerTodasLasPropiedades() {
@@ -263,6 +270,56 @@ class PropiedadService {
       );
     }
   }
+
+  async registrarPropiedad(rutaDocumento, tipo_id, datosPropiedad) {
+    if (!rutaDocumento) {
+      throw new ErrorDocumento('Debe proporcionar un documento válido');
+    }
+
+    const transaccion = await sequelize.transaction();
+
+    try {
+      const nuevaPropiedad = await crearPropiedad(datosPropiedad, transaccion);
+      const { rutaFinal } = await documentoService.procesarDocumento(rutaDocumento, tipo_id);
+      const nuevoDocumento = await documentoService.guardarDocumento(
+        rutaFinal,
+        tipo_id,
+        null,
+        nuevaPropiedad.id,
+        transaccion
+      );
+
+      await transaccion.commit();
+
+      return {
+        exito: true,
+        mensaje: 'Propiedad creada exitosamente',
+        datos: { propiedad: nuevaPropiedad, documento: nuevoDocumento }
+      };
+    } catch (error) {
+      await transaccion.rollback();
+      await limpiarArchivoTemporal(rutaDocumento);
+      throw manejarErrorRegistro(error);
+    }
+  }
 }
+
+const crearPropiedad = async (datosPropiedad, transaccion) => {
+  return await Propiedad.create(datosPropiedad, { transaction: transaccion });
+};
+
+const manejarErrorRegistro = (error) => {
+  if (error.name === 'SequelizeUniqueConstraintError') {
+    const camposDuplicados = error.errors.map(e => e.path).join(', ');
+    return new ErrorBaseDatos(`Ya existe un registro con el mismo ${camposDuplicados}`);
+  }
+
+  if (error.name === 'SequelizeValidationError') {
+    const mensajesError = error.errors.map(e => e.message).join(', ');
+    return new ErrorBaseDatos(`Error de validación: ${mensajesError}`);
+  }
+
+  return error;
+};
 
 export default new PropiedadService();

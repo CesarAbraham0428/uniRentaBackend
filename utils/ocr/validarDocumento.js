@@ -2,10 +2,10 @@ import ocrApi from "./ocrApi.js";
 import verificarDatos from "./validadorCamposOCR.js";
 import { ErrorDocumento } from "../errores/erroresDocumento.js";
 
-const validarDocumento = async (rutaArchivo, tipoDocumento) => {
+const validarDocumento = async (rutaArchivo, tipo_id) => {
   try {
     const textoExtraido = await ocrApi(rutaArchivo);
-    verificarDatos(textoExtraido, tipoDocumento);
+    verificarDatos(textoExtraido, tipo_id);
     return true;
   } catch (error) {
     if (error instanceof ErrorDocumento) {

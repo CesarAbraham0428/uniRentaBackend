@@ -1,15 +1,21 @@
 import { ErrorValidacionDocumento } from "../errores/erroresDocumento.js";
-import tipoDocumento from "./camposRequeridos.js";
+import { obtenerTipoDocumentoPorID } from "../../services/documentoService.js";
 
-const verificarDatos = (textoExtraido, tipoDoc) => {
+const verificarDatos = async (textoExtraido, tipo_id) => {
   const textoMayus = textoExtraido.toUpperCase();
-  const camposRequeridos = tipoDocumento[tipoDoc.toUpperCase()];
+  const tipoDocumento = await obtenerTipoDocumentoPorID(tipo_id);
 
-  if (!camposRequeridos) {
-    throw new ErrorValidacionDocumento(`Tipo de documento no válido: ${tipoDoc}`);
+  if (!tipoDocumento) {
+    throw new ErrorValidacionDocumento(`Tipo de documento no válido: ${tipo_id}`);
   }
 
-  const camposFaltantes = camposRequeridos.filter(campo => !textoMayus.includes(campo));
+  const camposRequeridos = tipoDocumento.campos_requeridos;
+
+  if (!camposRequeridos || !Array.isArray(camposRequeridos)) {
+    throw new ErrorValidacionDocumento(`Campos requeridos no definidos para el tipo de documento: ${tipo_id}`);
+  }
+
+  const camposFaltantes = camposRequeridos.filter(campo => !textoMayus.includes(campo.toUpperCase()));
 
   if (camposFaltantes.length > 0) {
     throw new ErrorValidacionDocumento(
