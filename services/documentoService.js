@@ -7,12 +7,16 @@ import { moverArchivo, limpiarArchivoTemporal } from '../utils/files/manejadorAr
 
 export const procesarDocumento = async (rutaDocumento, tipo_id) => {
   try {
+    console.log(`Procesando documento: ${rutaDocumento} con tipo: ${tipo_id}`);
     await validarDocumento(rutaDocumento, tipo_id);
+    console.log(`Documento validado exitosamente`);
     const carpetaDestino = obtenerCarpetaDestino(tipo_id);
     const rutaFinal = moverArchivo(rutaDocumento, carpetaDestino);
+    console.log(`Documento movido a: ${rutaFinal}`);
     
     return { rutaFinal };
   } catch (error) {
+    console.error(`Error procesando documento ${rutaDocumento}:`, error.message);
     limpiarArchivoTemporal(rutaDocumento);
     throw error;
   }
@@ -30,7 +34,7 @@ export const guardarDocumento = async (rutaFinal, tipo_id, renteroId = null, pro
 };
 
 const obtenerCarpetaDestino = (tipo_id) => {
-  const tipo = tipo_id;
+  const tipo = Number(tipo_id)
   
   if (tipo === 1) {
     return 'rentero/identidad';

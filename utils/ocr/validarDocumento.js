@@ -5,7 +5,7 @@ import { ErrorDocumento } from "../errores/erroresDocumento.js";
 const validarDocumento = async (rutaArchivo, tipo_id) => {
   try {
     const textoExtraido = await ocrApi(rutaArchivo);
-    verificarDatos(textoExtraido, tipo_id);
+    await verificarDatos(textoExtraido, tipo_id);
     return true;
   } catch (error) {
     if (error instanceof ErrorDocumento) {

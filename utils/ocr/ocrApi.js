@@ -4,8 +4,14 @@ import fs from "fs";
 import { ErrorOCR } from "../errores/erroresDocumento.js";
 
 const ocrApi = async (rutaArchivo) => {
+  let datosFormulario;
+  let archivoStream;
+
   try {
-    const datosFormulario = crearFormulario(rutaArchivo);
+    const resultado = crearFormulario(rutaArchivo);
+    datosFormulario = resultado.datosFormulario;
+    archivoStream = resultado.archivoStream;
+
     const respuesta = await enviarSolicitudOCR(datosFormulario);
     
     validarRespuestaOCR(respuesta.data);
@@ -19,26 +25,40 @@ const ocrApi = async (rutaArchivo) => {
       throw error;
     }
     
+    if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+      throw new ErrorOCR("Tiempo de espera agotado al procesar el documento con OCR.Space");
+    }
+
     if (error.response) {
       throw new ErrorOCR(`Error en OCR.Space: ${error.response.data?.ErrorMessage || error.message}`);
     }
     
     throw new ErrorOCR(error.message || "Error al conectar con OCR.Space");
+  } finally {
+    // Cerrar el stream si existe
+    if (archivoStream && typeof archivoStream.destroy === 'function') {
+      archivoStream.destroy();
+    }
   }
 };
 
 const crearFormulario = (rutaArchivo) => {
   const datosFormulario = new FormData();
   const archivoStream = fs.createReadStream(rutaArchivo);
-  
+
   datosFormulario.append("file", archivoStream);
   datosFormulario.append("language", "spa");
   datosFormulario.append("isOverlayRequired", "false");
-  
-  return datosFormulario;
+
+  return { datosFormulario, archivoStream };
 };
 
 const enviarSolicitudOCR = async (datosFormulario) => {
+  // Validar que existe la clave API de OCR
+  if (!process.env.OCR) {
+    throw new ErrorOCR("Clave API de OCR no configurada en las variables de entorno");
+  }
+
   return await axios.post(
     "https://api.ocr.space/parse/image",
     datosFormulario,
@@ -49,6 +69,7 @@ const enviarSolicitudOCR = async (datosFormulario) => {
       },
       maxContentLength: Infinity,
       maxBodyLength: Infinity,
+      timeout: 30000, // 30 segundos de timeout
     }
   );
 };
