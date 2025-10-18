@@ -2,14 +2,17 @@ import Propiedad from "../models/propiedad.js";
 import Unidad from "../models/unidad.js";
 import Rentero from "../models/rentero.js";
 import Universidad from "../models/universidad.js";
+
+import sequelize from '../config/baseDeDatos.js';
+import * as documentoService from './documentoService.js';
+
 import { Op, fn, col, where } from "sequelize";
-import {ErrorAplicacion} from '../utils/errores/appError.js';
+
+import { limpiarArchivoTemporal } from '../utils/files/manejadorArchivos.js';
+import { ErrorBaseDatos, ErrorDocumento } from '../utils/errores/erroresDocumento.js';
+import { ErrorAplicacion } from '../utils/errores/appError.js';
 
 class PropiedadService {
-  /**
-   * Obtiene todas las propiedades disponibles
-   * @returns {Promise<Object>} Resultado con propiedades formateadas
-   */
   async obtenerTodasLasPropiedades() {
     try {
       const unidades = await Unidad.findAll({
@@ -66,9 +69,8 @@ class PropiedadService {
         data: propiedadesFormateadas,
       };
     } catch (error) {
-      throw new ErrorAplicacion(
-        `Error al obtener propiedades: ${error.message}`,
-        500
+      throw new Error(
+        `Error en servicio al obtener propiedades: ${error.message}`
       );
     }
   }
@@ -141,12 +143,8 @@ class PropiedadService {
         data: propiedadFormateada,
       };
     } catch (error) {
-      if (error instanceof ErrorAplicacion) {
-        throw error;
-      }
-      throw new ErrorAplicacion(
-        `Error al obtener propiedad: ${error.message}`,
-        500
+      throw new Error(
+        `Error en servicio al obtener propiedad: ${error.message}`
       );
     }
   }
@@ -184,6 +182,7 @@ class PropiedadService {
         wherePropiedad.colonia = { [Op.iLike]: `%${colonia}%` };
       }
 
+      let distanciaCond = null;
       if ((universidadId || universidadNombre) && rangoKm) {
         const uni = await Universidad.findOne({
           where: universidadId
@@ -192,14 +191,12 @@ class PropiedadService {
           attributes: ["id", "nombre", "ubicacion"],
         });
 
-        if (!uni) {
-          throw new ErrorAplicacion("Universidad no encontrada", 404);
-        }
+        if (!uni) return [];
 
         const [lng, lat] = uni.ubicacion.coordinates;
         const rangoMetros = Number(rangoKm) * 1000;
 
-        const distanciaCond = where(
+        distanciaCond = where(
           fn(
             "ST_DWithin",
             col("propiedad.ubicacion"),
@@ -268,15 +265,61 @@ class PropiedadService {
         data: propiedadesFormateadas,
       };
     } catch (error) {
-      if (error instanceof ErrorAplicacion) {
-        throw error;
-      }
-      throw new ErrorAplicacion(
-        `Error al filtrar propiedades: ${error.message}`,
-        500
+      throw new Error(
+        `Error en servicio al filtrar propiedades: ${error.message}`
       );
     }
   }
+
+  async registrarPropiedad(rutaDocumento, tipo_id, datosPropiedad) {
+    if (!rutaDocumento) {
+      throw new ErrorDocumento('Debe proporcionar un documento válido');
+    }
+
+    const transaccion = await sequelize.transaction();
+
+    try {
+      const nuevaPropiedad = await crearPropiedad(datosPropiedad, transaccion);
+      const { rutaFinal } = await documentoService.procesarDocumento(rutaDocumento, tipo_id);
+      const nuevoDocumento = await documentoService.guardarDocumento(
+        rutaFinal,
+        tipo_id,
+        null,
+        nuevaPropiedad.id,
+        transaccion
+      );
+
+      await transaccion.commit();
+
+      return {
+        exito: true,
+        mensaje: 'Propiedad creada exitosamente',
+        datos: { propiedad: nuevaPropiedad, documento: nuevoDocumento }
+      };
+    } catch (error) {
+      await transaccion.rollback();
+      await limpiarArchivoTemporal(rutaDocumento);
+      throw manejarErrorRegistro(error);
+    }
+  }
 }
+
+const crearPropiedad = async (datosPropiedad, transaccion) => {
+  return await Propiedad.create(datosPropiedad, { transaction: transaccion });
+};
+
+const manejarErrorRegistro = (error) => {
+  if (error.name === 'SequelizeUniqueConstraintError') {
+    const camposDuplicados = error.errors.map(e => e.path).join(', ');
+    return new ErrorBaseDatos(`Ya existe un registro con el mismo ${camposDuplicados}`);
+  }
+
+  if (error.name === 'SequelizeValidationError') {
+    const mensajesError = error.errors.map(e => e.message).join(', ');
+    return new ErrorBaseDatos(`Error de validación: ${mensajesError}`);
+  }
+
+  return error;
+};
 
 export default new PropiedadService();

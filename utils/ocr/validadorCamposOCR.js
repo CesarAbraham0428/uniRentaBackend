@@ -1,26 +1,26 @@
-import {ErrorAplicacion} from "../errores/appError.js";
-import tipoDocumento from "./camposRequeridos.js";
+import { ErrorValidacionDocumento } from "../errores/erroresDocumento.js";
+import { obtenerTipoDocumentoPorID } from "../../services/documentoService.js";
 
-/**
- * Verifica si el texto extraído contiene todos los campos requeridos.
- * @param {string} textoExtraido - Texto plano extraído del documento.
- * @param {string} tipoDoc - Tipo de documento ('INE','RECIBO_LUZ',etc).
- */
-
-const verificarDatos = (textoExtraido, tipoDoc) => {
+const verificarDatos = async (textoExtraido, tipo_id) => {
   const textoMayus = textoExtraido.toUpperCase();
+  const tipoDocumento = await obtenerTipoDocumentoPorID(tipo_id);
 
-  const camposRequeridos = tipoDocumento[tipoDoc];
+  if (!tipoDocumento) {
+    throw new ErrorValidacionDocumento(`Tipo de documento no válido: ${tipo_id}`);
+  }
 
-  if(camposRequeridos){
-    camposRequeridos.forEach((campo) => {
-      if (!textoMayus.includes(campo)) {
-        throw new ErrorAplicacion(
-          `El documento no contiene la información requerida`,
-          400
-        );
-      }
-    });
+  const camposRequeridos = tipoDocumento.campos_requeridos;
+
+  if (!camposRequeridos || !Array.isArray(camposRequeridos)) {
+    throw new ErrorValidacionDocumento(`Campos requeridos no definidos para el tipo de documento: ${tipo_id}`);
+  }
+
+  const camposFaltantes = camposRequeridos.filter(campo => !textoMayus.includes(campo.toUpperCase()));
+
+  if (camposFaltantes.length > 0) {
+    throw new ErrorValidacionDocumento(
+      `El documento no contiene los campos requeridos: ${camposFaltantes.join(', ')}`
+    );
   }
 };
 

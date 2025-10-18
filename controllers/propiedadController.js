@@ -46,3 +46,23 @@ export const obtenerPropiedadesConFiltros = async (req, res, next) => {
     next(error);
   }
 };
+
+export const registrarPropiedad = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      throw new ErrorDocumento('Debe proporcionar un documento válido');
+    }
+
+    const { tipo_id, ...datosPropiedad } = req.body;
+    
+    const resultado = await PropiedadService.registrarPropiedad(
+      req.file.path,
+      tipo_id,
+      datosPropiedad
+    );
+    
+    res.status(201).json(resultado);
+  } catch (error) {
+    next(error);
+  }
+};

@@ -1,5 +1,6 @@
 import { DataTypes } from 'sequelize';
 import sequelize from '../config/baseDeDatos.js';
+import Documento from './documento.js';
 
 const Propiedad = sequelize.define('propiedad', {
   id: {
@@ -39,6 +40,7 @@ const Propiedad = sequelize.define('propiedad', {
   },
 });
 
-
+// Asociaciones
+Propiedad.hasMany(Documento, { foreignKey: 'propiedad_id' });
 
 export default Propiedad;

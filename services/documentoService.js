@@ -1,26 +1,52 @@
 import Documento from '../models/documento.js';
+import TipoDocumento from '../models/tipo_documento.js';
 
-import verificarDatos from '../utils/ocr/validadorCamposOCR.js';
+
+import validarDocumento from '../utils/ocr/validarDocumento.js';
 import { moverArchivo, limpiarArchivoTemporal } from '../utils/files/manejadorArchivos.js';
 
-export const guardarDocumento = async (documento, tipo, renteroId = null, propiedadId = null) => {
-  // Validar el documento con OCR
-  const resultado = verificarDatos(documento, tipo);
+export const procesarDocumento = async (rutaDocumento, tipo_id) => {
+  try {
+    console.log(`Procesando documento: ${rutaDocumento} con tipo: ${tipo_id}`);
+    await validarDocumento(rutaDocumento, tipo_id);
+    console.log(`Documento validado exitosamente`);
+    const carpetaDestino = obtenerCarpetaDestino(tipo_id);
+    const rutaFinal = moverArchivo(rutaDocumento, carpetaDestino);
+    console.log(`Documento movido a: ${rutaFinal}`);
+    
+    return { rutaFinal };
+  } catch (error) {
+    console.error(`Error procesando documento ${rutaDocumento}:`, error.message);
+    limpiarArchivoTemporal(rutaDocumento);
+    throw error;
+  }
+};
+
+export const guardarDocumento = async (rutaFinal, tipo_id, renteroId = null, propiedadId = null, transaccion = null) => {
+  const opciones = transaccion ? { transaction: transaccion } : {};
   
-  if (!resultado) {
-    throw new ErrorAplicacion('El documento no cumple con los requisitos', 400);
-  }else{
-    // Mover el archivo a ubicación final
-    const rutaFinal = moverArchivo(documento, `${tipo}s/validos`);
-  
-    // Crear registro en la base de datos
-    const documento = await Documento.create({
+  return await Documento.create({
     ruta_archivo: rutaFinal,
-    tipo,
+    tipo_id,
     rentero_id: renteroId,
     propiedad_id: propiedadId
-  });
-}
+  }, opciones);
+};
+
+const obtenerCarpetaDestino = (tipo_id) => {
+  const tipo = Number(tipo_id)
   
-  return documento;
+  if (tipo === 1) {
+    return 'rentero/identidad';
+  }
+  
+  return 'rentero/propiedad';
+};
+
+export const obtenerDocumentos = async () => {
+  return await TipoDocumento.findAll();
+};
+
+export const obtenerTipoDocumentoPorID = async (id) => {
+  return await TipoDocumento.findByPk(id);
 };
