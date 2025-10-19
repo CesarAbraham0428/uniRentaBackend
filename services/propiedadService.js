@@ -271,26 +271,25 @@ class PropiedadService {
     }
   }
 
-  async registrarPropiedad(rutaDocumento, tipo_id, datosPropiedad) {
-    if (!rutaDocumento) {
-      throw new ErrorDocumento('Debe proporcionar un documento válido');
-    }
+async registrarPropiedad(rutaDocumento, tipo_id, datosPropiedad) {
+  if (!rutaDocumento) {
+    throw new ErrorDocumento('Debe proporcionar un documento válido');
+  }
 
-    const transaccion = await sequelize.transaction();
+  const transaccion = await sequelize.transaction();
 
-    try {
-      const nuevaPropiedad = await crearPropiedad(datosPropiedad, transaccion);
+    try {   
+      const nuevaPropiedad = await crearPropiedad(datosPropiedad, transaccion );
       const { rutaFinal } = await documentoService.procesarDocumento(rutaDocumento, tipo_id);
       const nuevoDocumento = await documentoService.guardarDocumento(
-        rutaFinal,
-        tipo_id,
-        null,
-        nuevaPropiedad.id,
-        transaccion
-      );
+      rutaFinal, 
+      tipo_id, 
+      null, 
+      nuevaPropiedad.id, 
+      transaccion
+    );
 
       await transaccion.commit();
-
       return {
         exito: true,
         mensaje: 'Propiedad creada exitosamente',
@@ -298,10 +297,11 @@ class PropiedadService {
       };
     } catch (error) {
       await transaccion.rollback();
-      await limpiarArchivoTemporal(rutaDocumento);
+      limpiarArchivoTemporal(rutaDocumento);
       throw manejarErrorRegistro(error);
     }
   }
+
 }
 
 const crearPropiedad = async (datosPropiedad, transaccion) => {
@@ -309,16 +309,12 @@ const crearPropiedad = async (datosPropiedad, transaccion) => {
 };
 
 const manejarErrorRegistro = (error) => {
-  if (error.name === 'SequelizeUniqueConstraintError') {
-    const camposDuplicados = error.errors.map(e => e.path).join(', ');
-    return new ErrorBaseDatos(`Ya existe un registro con el mismo ${camposDuplicados}`);
-  }
-
+  
   if (error.name === 'SequelizeValidationError') {
     const mensajesError = error.errors.map(e => e.message).join(', ');
     return new ErrorBaseDatos(`Error de validación: ${mensajesError}`);
   }
-
+  
   return error;
 };
 

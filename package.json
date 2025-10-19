@@ -4,10 +4,10 @@
   "description": "",
   "type": "module",
   "main": "server.js",
-  "scripts": {
-    "dev": "node --watch --env-file=.env server.js",
-    "start": "node --env-file=.env server.js"
-  },
+"scripts": {
+  "dev": "node --watch --env-file=.env server.js",
+  "start": "node --env-file=.env server.js"
+},
   "keywords": [],
   "author": "",
   "license": "ISC",

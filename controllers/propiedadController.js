@@ -1,4 +1,6 @@
 import PropiedadService from "../services/propiedadService.js";
+import { ErrorDocumento } from "../utils/errores/erroresDocumento.js";
+
 
 export const obtenerPropiedades = async (req, res, next) => {
   try {
@@ -55,6 +57,10 @@ export const registrarPropiedad = async (req, res, next) => {
 
     const { tipo_id, ...datosPropiedad } = req.body;
     
+    if (!datosPropiedad || Object.keys(datosPropiedad).length === 0) {
+      throw new Error("No se proporcionaron datos de la propiedad");
+    }
+
     const resultado = await PropiedadService.registrarPropiedad(
       req.file.path,
       tipo_id,
