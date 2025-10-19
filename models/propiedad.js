@@ -9,7 +9,12 @@ const Propiedad = sequelize.define('propiedad', {
     autoIncrement: true
   },
   rentero_id: {
-    type: DataTypes.INTEGER
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: {
+      model: 'rentero',
+      key: 'id'
+    }
   },
   nombre: {
     type: DataTypes.STRING
@@ -27,7 +32,16 @@ const Propiedad = sequelize.define('propiedad', {
     type: DataTypes.STRING
   },
   ubicacion: {
-    type: DataTypes.GEOGRAPHY('POINT', 4326)
+  type: DataTypes.GEOGRAPHY('POINT', 4326),
+  // Función para convertir el formato
+  set(value) {
+    if (value && value.type === 'Point' && value.coordinates) {
+      this.setDataValue('ubicacion', {
+        type: 'Point',
+        coordinates: value.coordinates
+      });
+    }
+  }
   },
   visible: {
     type: DataTypes.BOOLEAN
