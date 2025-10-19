@@ -1,6 +1,7 @@
 import Rentero from '../models/rentero.js';
 import sequelize from '../config/baseDeDatos.js';
 import * as documentoService from './documentoService.js';
+import { generarToken } from '../utils/auth/jwt.js';
 
 import { limpiarArchivoTemporal } from '../utils/files/manejadorArchivos.js';
 import { ErrorBaseDatos, ErrorDocumento } from '../utils/errores/erroresDocumento.js';
@@ -34,6 +35,77 @@ export const registrarRentero = async (rutaDocumento, tipo_id, datosRentero) => 
     await transaccion.rollback();
     limpiarArchivoTemporal(rutaDocumento);
     throw manejarErrorRegistro(error);
+  }
+};
+
+export const iniciarSesion = async (email, password) => {
+  try {
+    // Buscar el usuario por email
+    const rentero = await Rentero.findOne({ 
+      where: { email },
+      attributes: ['id', 'nombre', 'apellido', 'email', 'password', 'telefono']
+    });
+
+    if (!rentero) {
+      throw new ErrorBaseDatos('Credenciales inválidas');
+    }
+
+    // Verificar la contraseña
+    const passwordValida = await rentero.verificarPassword(password);
+    
+    if (!passwordValida) {
+      throw new ErrorBaseDatos('Credenciales inválidas');
+    }
+
+    // Generar token JWT
+    const token = generarToken({
+      id: rentero.id,
+      email: rentero.email,
+      nombre: rentero.nombre,
+      apellido: rentero.apellido
+    });
+
+    // Retornar datos del usuario sin la contraseña
+    const { password: _, ...datosRentero } = rentero.toJSON();
+
+    return {
+      exito: true,
+      mensaje: 'Inicio de sesión exitoso',
+      datos: {
+        rentero: datosRentero,
+        token
+      }
+    };
+
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const validarToken = async (token) => {
+  try {
+    const { verificarToken } = await import('../utils/auth/jwt.js');
+    const decoded = verificarToken(token);
+    
+    // Verificar que el usuario aún existe en la base de datos
+    const rentero = await Rentero.findByPk(decoded.id, {
+      attributes: ['id', 'nombre', 'apellido', 'email', 'telefono']
+    });
+
+    if (!rentero) {
+      throw new ErrorBaseDatos('Usuario no encontrado');
+    }
+
+    return {
+      exito: true,
+      datos: {
+        rentero: rentero.toJSON(),
+        tokenValido: true
+      }
+    };
+
+  } catch (error) {
+    throw new ErrorBaseDatos('Token inválido o expirado');
   }
 };
 
