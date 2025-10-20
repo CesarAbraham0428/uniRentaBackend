@@ -271,25 +271,29 @@ class PropiedadService {
     }
   }
 
-async registrarPropiedad(rutaDocumento, tipo_id, datosPropiedad) {
-  if (!rutaDocumento) {
-    throw new ErrorDocumento('Debe proporcionar un documento válido');
-  }
+  async registrarPropiedad(rutaDocumento, tipo_id, datosPropiedad) {
 
-  const transaccion = await sequelize.transaction();
+    if (!rutaDocumento) {
+      throw new ErrorDocumento('Debe proporcionar un documento válido');
+    }
 
-    try {   
-      const nuevaPropiedad = await crearPropiedad(datosPropiedad, transaccion );
+    const transaccion = await sequelize.transaction();
+
+    try {
+      const nuevaPropiedad = await crearPropiedad(datosPropiedad, transaccion);
+
       const { rutaFinal } = await documentoService.procesarDocumento(rutaDocumento, tipo_id);
+
       const nuevoDocumento = await documentoService.guardarDocumento(
-      rutaFinal, 
-      tipo_id, 
-      null, 
-      nuevaPropiedad.id, 
-      transaccion
-    );
+        rutaFinal,
+        tipo_id,
+        null,
+        nuevaPropiedad.id,
+        transaccion
+      );
 
       await transaccion.commit();
+
       return {
         exito: true,
         mensaje: 'Propiedad creada exitosamente',
@@ -304,17 +308,41 @@ async registrarPropiedad(rutaDocumento, tipo_id, datosPropiedad) {
 
 }
 
-const crearPropiedad = async (datosPropiedad, transaccion) => {
-  return await Propiedad.create(datosPropiedad, { transaction: transaccion });
+const crearPropiedad = async (datosPropiedad) => {
+
+  const { ubicacion, ...restoPropiedad } = datosPropiedad;
+
+  let datosParaBD = { ...restoPropiedad };
+
+  const coordenadas = ubicacion.coordenadas?.coordinates;
+
+  datosParaBD = {
+    ...restoPropiedad,
+    calle: ubicacion.calle,
+    colonia: ubicacion.colonia,
+    numero: ubicacion.numero,
+    codigo_postal: ubicacion.codigo_postal,
+    municipio: ubicacion.municipio || null,
+    estado: ubicacion.estado || null,
+
+    ubicacion: coordenadas && coordenadas.length === 2
+      ? {
+        type: 'Point',
+        coordinates: coordenadas
+      }
+      : null
+  };
+
+  return await Propiedad.create(datosParaBD);
 };
 
 const manejarErrorRegistro = (error) => {
-  
+
   if (error.name === 'SequelizeValidationError') {
     const mensajesError = error.errors.map(e => e.message).join(', ');
     return new ErrorBaseDatos(`Error de validación: ${mensajesError}`);
   }
-  
+
   return error;
 };
 

@@ -14,7 +14,7 @@ const TipoDocumento = sequelize.define('tipo_documento', {
     unique: true
   },
   campos_requeridos: {
-    type: DataTypes.JSONB,
+    type: DataTypes.ARRAY(DataTypes.STRING),
     allowNull: false
   }
 }, {

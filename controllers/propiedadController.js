@@ -54,13 +54,23 @@ export const registrarPropiedad = async (req, res, next) => {
     if (!req.file) {
       throw new ErrorDocumento('Debe proporcionar un documento válido');
     }
-
     const { tipo_id, ...datosPropiedad } = req.body;
-    
+
     if (!datosPropiedad || Object.keys(datosPropiedad).length === 0) {
       throw new Error("No se proporcionaron datos de la propiedad");
     }
 
+    if (!datosPropiedad.nombre) {
+      throw new Error('El campo nombre es requerido');
+    }
+    
+    if (!datosPropiedad.rentero_id) {
+      throw new Error('El campo rentero_id es requerido');
+    }
+    
+    if (!datosPropiedad.ubicacion) {
+      throw new Error('El campo ubicacion es requerido');
+    }
     const resultado = await PropiedadService.registrarPropiedad(
       req.file.path,
       tipo_id,
