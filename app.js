@@ -6,6 +6,7 @@ import { manejadorErrores } from "./utils/errores/manejadorErrores.js";
 import propiedadRoutes from './routes/propiedadRoutes.js';
 import renteroRoutes from './routes/renteroRoutes.js';
 import documentoRoutes from './routes/documentoRoutes.js';
+import universidadRoutes from './routes/universidadRoutes.js';
 
 import Unidad from './models/unidad.js';
 import Propiedad from './models/propiedad.js';
@@ -29,6 +30,7 @@ app.use(express.json());
 app.use('/propiedades', propiedadRoutes);
 app.use('/rentero', renteroRoutes);
 app.use('/documentos', documentoRoutes);
+app.use('/universidades', universidadRoutes);
 
 app.use(manejadorErrores);
 
