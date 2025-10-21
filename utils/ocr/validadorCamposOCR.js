@@ -9,17 +9,29 @@ const verificarDatos = async (textoExtraido, tipo_id) => {
     throw new ErrorValidacionDocumento(`Tipo de documento no válido: ${tipo_id}`);
   }
 
-  const camposRequeridos = tipoDocumento.campos_requeridos;
-
-  if (!camposRequeridos || !Array.isArray(camposRequeridos)) {
-    throw new ErrorValidacionDocumento(`Campos requeridos no definidos para el tipo de documento: ${tipo_id}`);
-  }
-
-  const camposFaltantes = camposRequeridos.filter(campo => !textoMayus.includes(campo.toUpperCase()));
+  const camposFaltantes = tipoDocumento.campos_requeridos.filter(campo => !textoMayus.includes(campo.toUpperCase()));
 
   if (camposFaltantes.length > 0) {
+    const total = tipoDocumento.campos_requeridos.length;
+    const faltan = camposFaltantes.length;
+    const detalle = camposFaltantes.join(', ');
+
+    if (faltan >= 4) {
+      throw new ErrorValidacionDocumento(
+        `Faltan ${faltan} campo(s): ${detalle}`,
+        'DOCUMENTO INVALIDO',
+        camposFaltantes,
+        faltan,
+        total
+      );
+    }
+
     throw new ErrorValidacionDocumento(
-      `El documento no contiene los campos requeridos: ${camposFaltantes.join(', ')}`
+      `Faltan ${faltan} campo(s): ${detalle}`,
+      'FALTAN CAMPOS AL DOCUMENTO',
+      camposFaltantes,
+      faltan,
+      total
     );
   }
 };
