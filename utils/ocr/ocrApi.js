@@ -26,14 +26,26 @@ const ocrApi = async (rutaArchivo) => {
     }
     
     if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
-      throw new ErrorOCR("Tiempo de espera agotado al procesar el documento con OCR.Space");
+      throw new ErrorOCR(
+        "Tiempo de espera agotado al procesar el documento con OCR.Space",
+        'TIMEOUT',
+        { code: error.code }
+      );
     }
 
     if (error.response) {
-      throw new ErrorOCR(`Error en OCR.Space: ${error.response.data?.ErrorMessage || error.message}`);
+      throw new ErrorOCR(
+        `Error en OCR.Space: ${error.response.data?.ErrorMessage || error.message}`,
+        'RESPUESTA_API',
+        { status: error.response.status, data: error.response.data }
+      );
     }
     
-    throw new ErrorOCR(error.message || "Error al conectar con OCR.Space");
+    throw new ErrorOCR(
+      error.message || "Error al conectar con OCR.Space",
+      'CONEXION',
+      { code: error.code }
+    );
   } finally {
     // Cerrar el stream si existe
     if (archivoStream && typeof archivoStream.destroy === 'function') {
@@ -56,7 +68,10 @@ const crearFormulario = (rutaArchivo) => {
 const enviarSolicitudOCR = async (datosFormulario) => {
   // Validar que existe la clave API de OCR
   if (!process.env.OCR) {
-    throw new ErrorOCR("Clave API de OCR no configurada en las variables de entorno");
+    throw new ErrorOCR(
+      "Clave API de OCR no configurada en las variables de entorno",
+      'CONFIGURACION'
+    );
   }
 
   return await axios.post(
@@ -76,17 +91,27 @@ const enviarSolicitudOCR = async (datosFormulario) => {
 
 const validarRespuestaOCR = (data) => {
   if (data.IsErroredOnProcessing) {
-    throw new ErrorOCR("Error al procesar el documento con OCR.Space");
+    throw new ErrorOCR(
+      "Error al procesar el documento con OCR.Space",
+      'PROCESAMIENTO_API',
+      { resultado: data }
+    );
   }
 
   if (!data.ParsedResults || data.ParsedResults.length === 0) {
-    throw new ErrorOCR("No se pudo extraer texto del documento");
+    throw new ErrorOCR(
+      "No se pudo extraer texto del documento",
+      'SIN_RESULTADOS'
+    );
   }
 };
 
 const validarTextoExtraido = (texto) => {
   if (!texto || texto.trim() === "") {
-    throw new ErrorOCR("El documento no contiene texto legible");
+    throw new ErrorOCR(
+      "El documento no contiene texto legible",
+      'SIN_TEXTO'
+    );
   }
 };
 

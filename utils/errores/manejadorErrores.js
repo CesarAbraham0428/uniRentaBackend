@@ -5,7 +5,11 @@ export const manejadorErrores = (err, req, res, next) => {
     return res.status(err.codigoEstado).json({
       estado: "error",
       mensaje: err.message,
-      tipo: err.tipo || 'ERROR_APLICACION'
+      tipo: err.tipo || 'ERROR_APLICACION',
+      ...(err.subtipo ? { subtipo: err.subtipo } : {}),
+      ...(err.detalles ? { detalles: err.detalles } : {}),
+      ...(typeof err.faltantesConteo === 'number' ? { faltantesConteo: err.faltantesConteo } : {}),
+      ...(typeof err.totalRequeridos === 'number' ? { totalRequeridos: err.totalRequeridos } : {})
     });
   }
 
