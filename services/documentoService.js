@@ -5,10 +5,11 @@ import TipoDocumento from '../models/tipo_documento.js';
 import validarDocumento from '../utils/ocr/validarDocumento.js';
 import { moverArchivo, limpiarArchivoTemporal } from '../utils/files/manejadorArchivos.js';
 
-export const procesarDocumento = async (rutaDocumento, tipo_id) => {
+export const procesarDocumento = async (rutaDocumento, tipo_id, opcionesValidacion = {}) => {
   try {
     console.log(`Procesando documento: ${rutaDocumento} con tipo: ${tipo_id}`);
-    await validarDocumento(rutaDocumento, tipo_id);
+    await validarDocumento(rutaDocumento, tipo_id, opcionesValidacion);
+
     console.log(`Documento validado exitosamente`);
     const carpetaDestino = obtenerCarpetaDestino(tipo_id);
     const rutaFinal = moverArchivo(rutaDocumento, carpetaDestino);
