@@ -1,5 +1,7 @@
 import { DataTypes } from 'sequelize';
 import sequelize from '../config/baseDeDatos.js';
+import Propiedad from './propiedad.js';
+
 
 const Unidad = sequelize.define('unidad', {
   id: {

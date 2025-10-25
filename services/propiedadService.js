@@ -13,30 +13,39 @@ import { ErrorBaseDatos, ErrorDocumento } from '../utils/errores/erroresDocument
 import { ErrorAplicacion } from '../utils/errores/appError.js';
 
 class PropiedadService {
+  
   async obtenerTodasLasPropiedades() {
     try {
       const unidades = await Unidad.findAll({
-        where: { estado: "libre" },
-        include: [
-          {
-            model: Propiedad,
-            as: "propiedad",
-            where: { visible: true },
-            include: [
-              {
-                model: Rentero,
-                as: "rentero",
-                attributes: ["id", "nombre", "apellido", "telefono", "email"],
-              },
-            ],
-          },
-        ],
-        order: [["id", "DESC"]],
+        where: { estado: "libre" }
       });
 
-      const propiedadesFormateadas = unidades.map((unidad) => {
+      const propiedadesFormateadas = [];
+
+      for (const unidad of unidades) {
+        // Obtener la propiedad manualmente
+        const propiedad = await Propiedad.findOne({
+          where: { 
+            id: unidad.propiedad_id,
+            visible: true 
+          }
+        });
+
+        if (!propiedad) continue;
+
+        // Obtener el rentero manualmente
+        const rentero = await Rentero.findOne({
+          where: { id: propiedad.rentero_id },
+          attributes: ["id", "nombre", "apellido", "telefono", "email"]
+        });
+
+        if (!rentero) continue;
+
         const uniJSON = unidad.toJSON();
-        return {
+        const propJSON = propiedad.toJSON();
+        const renteroJSON = rentero.toJSON();
+
+        propiedadesFormateadas.push({
           id: uniJSON.id,
           nombre: uniJSON.nombre,
           precio: parseFloat(uniJSON.precio),
@@ -44,24 +53,24 @@ class PropiedadService {
           descripcion: uniJSON.descripcion,
           imagenes: uniJSON.imagenes,
           ubicacion: {
-            nombre: uniJSON.propiedad.nombre,
-            direccion: `${uniJSON.propiedad.calle} ${uniJSON.propiedad.numero}, ${uniJSON.propiedad.colonia}`,
-            calle: uniJSON.propiedad.calle,
-            colonia: uniJSON.propiedad.colonia,
-            numero: uniJSON.propiedad.numero,
-            codigo_postal: uniJSON.propiedad.codigo_postal,
-            municipio: uniJSON.propiedad.municipio,
-            estado: uniJSON.propiedad.estado,
-            coordenadas: uniJSON.propiedad.ubicacion,
+            nombre: propJSON.nombre,
+            direccion: `${propJSON.calle} ${propJSON.numero}, ${propJSON.colonia}`,
+            calle: propJSON.calle,
+            colonia: propJSON.colonia,
+            numero: propJSON.numero,
+            codigo_postal: propJSON.codigo_postal,
+            municipio: propJSON.municipio,
+            estado: propJSON.estado,
+            coordenadas: propJSON.ubicacion,
           },
           rentero: {
-            id: uniJSON.propiedad.rentero.id,
-            nombre: `${uniJSON.propiedad.rentero.nombre} ${uniJSON.propiedad.rentero.apellido}`,
-            telefono: uniJSON.propiedad.rentero.telefono,
-            email: uniJSON.propiedad.rentero.email,
+            id: renteroJSON.id,
+            nombre: `${renteroJSON.nombre} ${renteroJSON.apellido}`,
+            telefono: renteroJSON.telefono,
+            email: renteroJSON.email,
           },
-        };
-      });
+        });
+      }
 
       return {
         success: true,
@@ -90,28 +99,39 @@ class PropiedadService {
         where: {
           id: id,
           estado: "libre",
-        },
-        include: [
-          {
-            model: Propiedad,
-            as: "propiedad",
-            where: { visible: true },
-            include: [
-              {
-                model: Rentero,
-                as: "rentero",
-                attributes: ["id", "nombre", "apellido", "telefono", "email"],
-              },
-            ],
-          },
-        ],
+        }
       });
 
       if (!unidad) {
         throw new ErrorAplicacion("Propiedad no encontrada", 404);
       }
 
+      // Obtener la propiedad manualmente
+      const propiedad = await Propiedad.findOne({
+        where: { 
+          id: unidad.propiedad_id,
+          visible: true 
+        }
+      });
+
+      if (!propiedad) {
+        throw new ErrorAplicacion("Propiedad no encontrada", 404);
+      }
+
+      // Obtener el rentero manualmente
+      const rentero = await Rentero.findOne({
+        where: { id: propiedad.rentero_id },
+        attributes: ["id", "nombre", "apellido", "telefono", "email"]
+      });
+
+      if (!rentero) {
+        throw new ErrorAplicacion("Rentero no encontrado", 404);
+      }
+
       const uniJSON = unidad.toJSON();
+      const propJSON = propiedad.toJSON();
+      const renteroJSON = rentero.toJSON();
+
       const propiedadFormateada = {
         id: uniJSON.id,
         nombre: uniJSON.nombre,
@@ -120,21 +140,21 @@ class PropiedadService {
         descripcion: uniJSON.descripcion,
         imagenes: uniJSON.imagenes,
         ubicacion: {
-          nombre: uniJSON.propiedad.nombre,
-          direccion: `${uniJSON.propiedad.calle} ${uniJSON.propiedad.numero}, ${uniJSON.propiedad.colonia}`,
-          calle: uniJSON.propiedad.calle,
-          colonia: uniJSON.propiedad.colonia,
-          numero: uniJSON.propiedad.numero,
-          municipio: uniJSON.propiedad.municipio,
-          estado: uniJSON.propiedad.estado,
-          codigo_postal: uniJSON.propiedad.codigo_postal,
-          coordenadas: uniJSON.propiedad.ubicacion,
+          nombre: propJSON.nombre,
+          direccion: `${propJSON.calle} ${propJSON.numero}, ${propJSON.colonia}`,
+          calle: propJSON.calle,
+          colonia: propJSON.colonia,
+          numero: propJSON.numero,
+          municipio: propJSON.municipio,
+          estado: propJSON.estado,
+          codigo_postal: propJSON.codigo_postal,
+          coordenadas: propJSON.ubicacion,
         },
         rentero: {
-          id: uniJSON.propiedad.rentero.id,
-          nombre: `${uniJSON.propiedad.rentero.nombre} ${uniJSON.propiedad.rentero.apellido}`,
-          telefono: uniJSON.propiedad.rentero.telefono,
-          email: uniJSON.propiedad.rentero.email,
+          id: renteroJSON.id,
+          nombre: `${renteroJSON.nombre} ${renteroJSON.apellido}`,
+          telefono: renteroJSON.telefono,
+          email: renteroJSON.email,
         },
       };
 
@@ -182,56 +202,73 @@ class PropiedadService {
         wherePropiedad.colonia = { [Op.iLike]: `%${colonia}%` };
       }
 
-      let distanciaCond = null;
-      if ((universidadId || universidadNombre) && rangoKm) {
-        const uni = await Universidad.findOne({
-          where: universidadId
-            ? { id: universidadId }
-            : { nombre: { [Op.iLike]: `%${universidadNombre}%` } },
-          attributes: ["id", "nombre", "ubicacion"],
-        });
-
-        if (!uni) return [];
-
-        const [lng, lat] = uni.ubicacion.coordinates;
-        const rangoMetros = Number(rangoKm) * 1000;
-
-        distanciaCond = where(
-          fn(
-            "ST_DWithin",
-            col("propiedad.ubicacion"),
-            fn("ST_SetSRID", fn("ST_MakePoint", lng, lat), 4326),
-            rangoMetros
-          ),
-          true
-        );
-
-        if (!wherePropiedad[Op.and]) wherePropiedad[Op.and] = [];
-        wherePropiedad[Op.and].push(distanciaCond);
-      }
-
+      // Obtener unidades con filtros de precio
       const unidades = await Unidad.findAll({
         where: whereUnidad,
-        include: [
-          {
-            model: Propiedad,
-            as: "propiedad",
-            where: wherePropiedad,
-            include: [
-              {
-                model: Rentero,
-                as: "rentero",
-                attributes: ["id", "nombre", "apellido", "telefono", "email"],
-              },
-            ],
-          },
-        ],
         order: [["id", "DESC"]],
       });
 
-      const propiedadesFormateadas = unidades.map((unidad) => {
+      const propiedadesFormateadas = [];
+
+      for (const unidad of unidades) {
+        // Obtener la propiedad con filtros de ubicación
+        const propiedad = await Propiedad.findOne({
+          where: { 
+            id: unidad.propiedad_id,
+            ...wherePropiedad
+          }
+        });
+
+        if (!propiedad) continue;
+
+        // Si hay filtros de universidad, verificar distancia
+        if ((universidadId || universidadNombre) && rangoKm) {
+          const uni = await Universidad.findOne({
+            where: universidadId
+              ? { id: universidadId }
+              : { nombre: { [Op.iLike]: `%${universidadNombre}%` } },
+            attributes: ["id", "nombre", "ubicacion"],
+          });
+
+          if (uni && propiedad.ubicacion) {
+            const [lng, lat] = uni.ubicacion.coordinates;
+            const rangoMetros = Number(rangoKm) * 1000;
+
+            // Verificar distancia usando consulta SQL
+            const distanceQuery = await sequelize.query(`
+              SELECT ST_DWithin(
+                ST_SetSRID(ST_MakePoint(:propLng, :propLat), 4326),
+                ST_SetSRID(ST_MakePoint(:uniLng, :uniLat), 4326),
+                :range
+              ) as within_range
+            `, {
+              replacements: {
+                propLng: propiedad.ubicacion.coordinates[0],
+                propLat: propiedad.ubicacion.coordinates[1],
+                uniLng: lng,
+                uniLat: lat,
+                range: rangoMetros
+              },
+              type: sequelize.QueryTypes.SELECT
+            });
+
+            if (!distanceQuery[0].within_range) continue;
+          }
+        }
+
+        // Obtener el rentero
+        const rentero = await Rentero.findOne({
+          where: { id: propiedad.rentero_id },
+          attributes: ["id", "nombre", "apellido", "telefono", "email"]
+        });
+
+        if (!rentero) continue;
+
         const uniJSON = unidad.toJSON();
-        return {
+        const propJSON = propiedad.toJSON();
+        const renteroJSON = rentero.toJSON();
+
+        propiedadesFormateadas.push({
           id: uniJSON.id,
           nombre: uniJSON.nombre,
           precio: parseFloat(uniJSON.precio),
@@ -239,24 +276,24 @@ class PropiedadService {
           descripcion: uniJSON.descripcion,
           imagenes: uniJSON.imagenes,
           ubicacion: {
-            nombre: uniJSON.propiedad.nombre,
-            direccion: `${uniJSON.propiedad.calle} ${uniJSON.propiedad.numero}, ${uniJSON.propiedad.colonia}`,
-            calle: uniJSON.propiedad.calle,
-            colonia: uniJSON.propiedad.colonia,
-            numero: uniJSON.propiedad.numero,
-            codigo_postal: uniJSON.propiedad.codigo_postal,
-            municipio: uniJSON.propiedad.municipio,
-            estado: uniJSON.propiedad.estado,
-            coordenadas: uniJSON.propiedad.ubicacion,
+            nombre: propJSON.nombre,
+            direccion: `${propJSON.calle} ${propJSON.numero}, ${propJSON.colonia}`,
+            calle: propJSON.calle,
+            colonia: propJSON.colonia,
+            numero: propJSON.numero,
+            codigo_postal: propJSON.codigo_postal,
+            municipio: propJSON.municipio,
+            estado: propJSON.estado,
+            coordenadas: propJSON.ubicacion,
           },
           rentero: {
-            id: uniJSON.propiedad.rentero.id,
-            nombre: `${uniJSON.propiedad.rentero.nombre} ${uniJSON.propiedad.rentero.apellido}`,
-            telefono: uniJSON.propiedad.rentero.telefono,
-            email: uniJSON.propiedad.rentero.email,
+            id: renteroJSON.id,
+            nombre: `${renteroJSON.nombre} ${renteroJSON.apellido}`,
+            telefono: renteroJSON.telefono,
+            email: renteroJSON.email,
           },
-        };
-      });
+        });
+      }
 
       return {
         success: true,
@@ -272,7 +309,6 @@ class PropiedadService {
   }
 
   async registrarPropiedad(rutaDocumento, tipo_id, datosPropiedad) {
-
     if (!rutaDocumento) {
       throw new ErrorDocumento('Debe proporcionar un documento válido');
     }
@@ -306,10 +342,239 @@ class PropiedadService {
     }
   }
 
+  // NUEVOS MÉTODOS PARA MANEJAR UNIDADES
+
+  /**
+   * Obtiene todas las propiedades de un rentero específico
+   * @param {number} renteroId - ID del rentero
+   * @returns {Promise<Object>} Lista de propiedades del rentero
+   */
+  async obtenerPropiedadesPorRentero(renteroId) {
+    try {
+      const propiedades = await Propiedad.findAll({
+        where: { 
+          rentero_id: renteroId,
+          visible: true 
+        },
+        attributes: ['id', 'nombre', 'calle', 'colonia', 'numero', 'municipio'],
+        order: [['id', 'DESC']]
+      });
+
+      return {
+        success: true,
+        cantidad: propiedades.length,
+        data: propiedades
+      };
+    } catch (error) {
+      throw new Error(`Error al obtener propiedades del rentero: ${error.message}`);
+    }
+  }
+
+  /**
+   * Registra una nueva unidad para una propiedad
+   * @param {Object} datosUnidad - Datos de la unidad a crear
+   * @param {number} renteroId - ID del rentero autenticado
+   * @returns {Promise<Object>} Resultado de la creación
+   */
+  async registrarUnidad(datosUnidad, renteroId) {
+    const transaccion = await sequelize.transaction();
+
+    try {
+      // Verificar que la propiedad pertenezca al rentero autenticado
+      const propiedad = await Propiedad.findOne({
+        where: {
+          id: datosUnidad.propiedad_id,
+          rentero_id: renteroId
+        },
+        transaction: transaccion
+      });
+
+      if (!propiedad) {
+        throw new ErrorAplicacion('La propiedad no existe o no te pertenece', 403);
+      }
+
+      // Preparar datos para la base de datos
+      const datosParaBD = {
+        propiedad_id: parseInt(datosUnidad.propiedad_id),
+        nombre: datosUnidad.nombre,
+        precio: parseFloat(datosUnidad.precio),
+        estado: datosUnidad.estado || 'libre',
+        descripcion: datosUnidad.descripcion || null,
+        imagenes: datosUnidad.imagenes || null
+      };
+
+      // Validar que el precio sea válido
+      if (isNaN(datosParaBD.precio) || datosParaBD.precio <= 0) {
+        throw new ErrorAplicacion('El precio debe ser un número válido mayor a 0', 400);
+      }
+
+      const nuevaUnidad = await Unidad.create(datosParaBD, { transaction: transaccion });
+
+      await transaccion.commit();
+
+      return {
+        success: true,
+        mensaje: 'Unidad registrada exitosamente',
+        data: nuevaUnidad
+      };
+    } catch (error) {
+      await transaccion.rollback();
+      throw manejarErrorRegistro(error);
+    }
+  }
+
+  /**
+   * Obtiene todas las unidades de una propiedad específica
+   * @param {number} propiedadId - ID de la propiedad
+   * @param {number} renteroId - ID del rentero autenticado
+   * @returns {Promise<Object>} Lista de unidades
+   */
+  async obtenerUnidadesPorPropiedad(propiedadId, renteroId) {
+    try {
+      // Verificar que la propiedad pertenezca al rentero
+      const propiedad = await Propiedad.findOne({
+        where: {
+          id: propiedadId,
+          rentero_id: renteroId
+        }
+      });
+
+      if (!propiedad) {
+        throw new ErrorAplicacion('La propiedad no existe o no te pertenece', 403);
+      }
+
+      const unidades = await Unidad.findAll({
+        where: { propiedad_id: propiedadId },
+        order: [['id', 'DESC']]
+      });
+
+      return {
+        success: true,
+        cantidad: unidades.length,
+        propiedad: {
+          id: propiedad.id,
+          nombre: propiedad.nombre
+        },
+        data: unidades
+      };
+    } catch (error) {
+      throw new Error(`Error al obtener unidades: ${error.message}`);
+    }
+  }
+
+  /**
+   * Actualiza una unidad específica
+   * @param {number} unidadId - ID de la unidad
+   * @param {Object} datosActualizacion - Datos a actualizar
+   * @param {number} renteroId - ID del rentero autenticado
+   * @returns {Promise<Object>} Resultado de la actualización
+   */
+  async actualizarUnidad(unidadId, datosActualizacion, renteroId) {
+    const transaccion = await sequelize.transaction();
+
+    try {
+      // Buscar la unidad
+      const unidad = await Unidad.findOne({
+        where: { id: unidadId },
+        transaction: transaccion
+      });
+
+      if (!unidad) {
+        throw new ErrorAplicacion('La unidad no existe', 404);
+      }
+
+      // Verificar que la propiedad pertenezca al rentero
+      const propiedad = await Propiedad.findOne({
+        where: {
+          id: unidad.propiedad_id,
+          rentero_id: renteroId
+        },
+        transaction: transaccion
+      });
+
+      if (!propiedad) {
+        throw new ErrorAplicacion('No tienes permisos para actualizar esta unidad', 403);
+      }
+
+      // Preparar datos para actualización
+      const datosPermitidos = {};
+      if (datosActualizacion.nombre) datosPermitidos.nombre = datosActualizacion.nombre;
+      if (datosActualizacion.precio) {
+        const precio = parseFloat(datosActualizacion.precio);
+        if (isNaN(precio) || precio <= 0) {
+          throw new ErrorAplicacion('El precio debe ser un número válido mayor a 0', 400);
+        }
+        datosPermitidos.precio = precio;
+      }
+      if (datosActualizacion.estado) datosPermitidos.estado = datosActualizacion.estado;
+      if (datosActualizacion.descripcion !== undefined) datosPermitidos.descripcion = datosActualizacion.descripcion;
+      if (datosActualizacion.imagenes !== undefined) datosPermitidos.imagenes = datosActualizacion.imagenes;
+
+      await unidad.update(datosPermitidos, { transaction: transaccion });
+
+      await transaccion.commit();
+
+      return {
+        success: true,
+        mensaje: 'Unidad actualizada exitosamente',
+        data: unidad
+      };
+    } catch (error) {
+      await transaccion.rollback();
+      throw manejarErrorRegistro(error);
+    }
+  }
+
+  /**
+   * Elimina una unidad (soft delete cambiando estado)
+   * @param {number} unidadId - ID de la unidad
+   * @param {number} renteroId - ID del rentero autenticado
+   * @returns {Promise<Object>} Resultado de la eliminación
+   */
+  async eliminarUnidad(unidadId, renteroId) {
+    const transaccion = await sequelize.transaction();
+
+    try {
+      // Buscar la unidad
+      const unidad = await Unidad.findOne({
+        where: { id: unidadId },
+        transaction: transaccion
+      });
+
+      if (!unidad) {
+        throw new ErrorAplicacion('La unidad no existe', 404);
+      }
+
+      // Verificar que la propiedad pertenezca al rentero
+      const propiedad = await Propiedad.findOne({
+        where: {
+          id: unidad.propiedad_id,
+          rentero_id: renteroId
+        },
+        transaction: transaccion
+      });
+
+      if (!propiedad) {
+        throw new ErrorAplicacion('No tienes permisos para eliminar esta unidad', 403);
+      }
+
+      // Soft delete - cambiar estado a 'inactiva'
+      await unidad.update({ estado: 'inactiva' }, { transaction: transaccion });
+
+      await transaccion.commit();
+
+      return {
+        success: true,
+        mensaje: 'Unidad eliminada exitosamente'
+      };
+    } catch (error) {
+      await transaccion.rollback();
+      throw manejarErrorRegistro(error);
+    }
+  }
 }
 
-const crearPropiedad = async (datosPropiedad) => {
-
+const crearPropiedad = async (datosPropiedad, transaccion) => {
   const { ubicacion, ...restoPropiedad } = datosPropiedad;
 
   let datosParaBD = { ...restoPropiedad };
@@ -333,11 +598,10 @@ const crearPropiedad = async (datosPropiedad) => {
       : null
   };
 
-  return await Propiedad.create(datosParaBD);
+  return await Propiedad.create(datosParaBD, { transaction: transaccion });
 };
 
 const manejarErrorRegistro = (error) => {
-
   if (error.name === 'SequelizeValidationError') {
     const mensajesError = error.errors.map(e => e.message).join(', ');
     return new ErrorBaseDatos(`Error de validación: ${mensajesError}`);

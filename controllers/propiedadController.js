@@ -82,3 +82,75 @@ export const registrarPropiedad = async (req, res, next) => {
     next(error);
   }
 };
+
+export const obtenerPropiedadesDelRentero = async (req, res, next) => {
+  try {
+    const renteroId = req.usuario.id; // Del middleware de autenticación
+    const resultado = await PropiedadService.obtenerPropiedadesPorRentero(renteroId);
+    res.status(200).json(resultado);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const registrarUnidad = async (req, res, next) => {
+  try {
+    const renteroId = req.usuario.id; // Del middleware de autenticación
+    const datosUnidad = req.body;
+
+    // Validaciones básicas
+    if (!datosUnidad.propiedad_id) {
+      throw new Error('El campo propiedad_id es requerido');
+    }
+    
+    if (!datosUnidad.nombre) {
+      throw new Error('El campo nombre es requerido');
+    }
+    
+    if (!datosUnidad.precio) {
+      throw new Error('El campo precio es requerido');
+    }
+
+    const resultado = await PropiedadService.registrarUnidad(datosUnidad, renteroId);
+    res.status(201).json(resultado);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const obtenerUnidadesPorPropiedad = async (req, res, next) => {
+  try {
+    const { propiedadId } = req.params;
+    const renteroId = req.usuario.id;
+    
+    const resultado = await PropiedadService.obtenerUnidadesPorPropiedad(propiedadId, renteroId);
+    res.status(200).json(resultado);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const actualizarUnidad = async (req, res, next) => {
+  try {
+    const { unidadId } = req.params;
+    const renteroId = req.usuario.id;
+    const datosActualizacion = req.body;
+
+    const resultado = await PropiedadService.actualizarUnidad(unidadId, datosActualizacion, renteroId);
+    res.status(200).json(resultado);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const eliminarUnidad = async (req, res, next) => {
+  try {
+    const { unidadId } = req.params;
+    const renteroId = req.usuario.id;
+
+    const resultado = await PropiedadService.eliminarUnidad(unidadId, renteroId);
+    res.status(200).json(resultado);
+  } catch (error) {
+    next(error);
+  }
+};
