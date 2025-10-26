@@ -154,3 +154,23 @@ export const eliminarUnidad = async (req, res, next) => {
     next(error);
   }
 };
+
+export const obtenerUnidadPorId = async (req, res, next) => {
+  try {
+    const { unidadId } = req.params;
+    const renteroId = req.usuario.id;
+    
+    // Validar que el ID de unidad sea válido
+    if (!unidadId || isNaN(unidadId)) {
+      return res.status(400).json({
+        success: false,
+        mensaje: 'ID de unidad inválido'
+      });
+    }
+
+    const resultado = await PropiedadService.obtenerUnidadPorId(unidadId, renteroId);
+    res.status(200).json(resultado);
+  } catch (error) {
+    next(error);
+  }
+};

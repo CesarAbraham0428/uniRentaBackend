@@ -11,6 +11,7 @@ import {
   obtenerPropiedadesDelRentero,
   registrarUnidad,
   obtenerUnidadesPorPropiedad,
+  obtenerUnidadPorId,
   actualizarUnidad,
   eliminarUnidad
 } from '../controllers/propiedadController.js';
@@ -29,21 +30,17 @@ router.post('/registrar',
     try {
       const { body } = req;
 
-      // Parsear ubicacion si viene como string
       if (body.ubicacion && typeof body.ubicacion === 'string') {
         body.ubicacion = JSON.parse(body.ubicacion);
       }
       
-      // Parsear coordinates si viene como string
       if (body.ubicacion?.coordinates && typeof body.ubicacion.coordinates === 'string') {
         body.ubicacion.coordinates = JSON.parse(body.ubicacion.coordinates);
       }
 
-      // Convertir a números
       if (body.tipo_id) body.tipo_id = parseInt(body.tipo_id);
       if (body.rentero_id) body.rentero_id = parseInt(body.rentero_id);
 
-      // Convertir a booleano
       if (body.visible !== undefined) {
         body.visible = body.visible === 'true' || body.visible === true;
       }
@@ -59,12 +56,9 @@ router.post('/registrar',
   registrarPropiedad
 );
 
-// NUEVAS RUTAS PARA UNIDADES (requieren autenticación)
 
-// Obtener las propiedades del rentero autenticado
 router.get('/rentero/mis-propiedades', autenticarToken, obtenerPropiedadesDelRentero);
 
-// Registrar nueva unidad
 router.post('/unidades/registrar', 
   autenticarToken,
   (req, res, next) => {
@@ -109,6 +103,8 @@ router.post('/unidades/registrar',
 // Obtener unidades de una propiedad específica
 router.get('/unidades/propiedad/:propiedadId', autenticarToken, obtenerUnidadesPorPropiedad);
 
+router.get('/unidades/:unidadId', autenticarToken, obtenerUnidadPorId);
+
 // Actualizar unidad
 router.put('/unidades/:unidadId', 
   autenticarToken,
@@ -148,7 +144,6 @@ router.put('/unidades/:unidadId',
   actualizarUnidad
 );
 
-// Eliminar unidad (soft delete)
 router.delete('/unidades/:unidadId', autenticarToken, eliminarUnidad);
 
 export default router;

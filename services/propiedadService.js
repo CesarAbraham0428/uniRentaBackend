@@ -13,7 +13,7 @@ import { ErrorBaseDatos, ErrorDocumento } from '../utils/errores/erroresDocument
 import { ErrorAplicacion } from '../utils/errores/appError.js';
 
 class PropiedadService {
-  
+
   async obtenerTodasLasPropiedades() {
     try {
       const unidades = await Unidad.findAll({
@@ -25,9 +25,9 @@ class PropiedadService {
       for (const unidad of unidades) {
         // Obtener la propiedad manualmente
         const propiedad = await Propiedad.findOne({
-          where: { 
+          where: {
             id: unidad.propiedad_id,
-            visible: true 
+            visible: true
           }
         });
 
@@ -108,9 +108,9 @@ class PropiedadService {
 
       // Obtener la propiedad manualmente
       const propiedad = await Propiedad.findOne({
-        where: { 
+        where: {
           id: unidad.propiedad_id,
-          visible: true 
+          visible: true
         }
       });
 
@@ -213,7 +213,7 @@ class PropiedadService {
       for (const unidad of unidades) {
         // Obtener la propiedad con filtros de ubicación
         const propiedad = await Propiedad.findOne({
-          where: { 
+          where: {
             id: unidad.propiedad_id,
             ...wherePropiedad
           }
@@ -352,9 +352,9 @@ class PropiedadService {
   async obtenerPropiedadesPorRentero(renteroId) {
     try {
       const propiedades = await Propiedad.findAll({
-        where: { 
+        where: {
           rentero_id: renteroId,
-          visible: true 
+          visible: true
         },
         attributes: ['id', 'nombre', 'calle', 'colonia', 'numero', 'municipio'],
         order: [['id', 'DESC']]
@@ -370,58 +370,7 @@ class PropiedadService {
     }
   }
 
-  /**
-   * Registra una nueva unidad para una propiedad
-   * @param {Object} datosUnidad - Datos de la unidad a crear
-   * @param {number} renteroId - ID del rentero autenticado
-   * @returns {Promise<Object>} Resultado de la creación
-   */
-  async registrarUnidad(datosUnidad, renteroId) {
-    const transaccion = await sequelize.transaction();
 
-    try {
-      // Verificar que la propiedad pertenezca al rentero autenticado
-      const propiedad = await Propiedad.findOne({
-        where: {
-          id: datosUnidad.propiedad_id,
-          rentero_id: renteroId
-        },
-        transaction: transaccion
-      });
-
-      if (!propiedad) {
-        throw new ErrorAplicacion('La propiedad no existe o no te pertenece', 403);
-      }
-
-      // Preparar datos para la base de datos
-      const datosParaBD = {
-        propiedad_id: parseInt(datosUnidad.propiedad_id),
-        nombre: datosUnidad.nombre,
-        precio: parseFloat(datosUnidad.precio),
-        estado: datosUnidad.estado || 'libre',
-        descripcion: datosUnidad.descripcion || null,
-        imagenes: datosUnidad.imagenes || null
-      };
-
-      // Validar que el precio sea válido
-      if (isNaN(datosParaBD.precio) || datosParaBD.precio <= 0) {
-        throw new ErrorAplicacion('El precio debe ser un número válido mayor a 0', 400);
-      }
-
-      const nuevaUnidad = await Unidad.create(datosParaBD, { transaction: transaccion });
-
-      await transaccion.commit();
-
-      return {
-        success: true,
-        mensaje: 'Unidad registrada exitosamente',
-        data: nuevaUnidad
-      };
-    } catch (error) {
-      await transaccion.rollback();
-      throw manejarErrorRegistro(error);
-    }
-  }
 
   /**
    * Obtiene todas las unidades de una propiedad específica
@@ -461,6 +410,90 @@ class PropiedadService {
       throw new Error(`Error al obtener unidades: ${error.message}`);
     }
   }
+
+  async obtenerUnidadPorId(unidadId, renteroId = null) {
+    if (isNaN(unidadId)) {
+      throw new ErrorAplicacion("ID de unidad inválido", 400);
+    }
+
+    try {
+      // Buscar la unidad
+      const unidad = await Unidad.findOne({
+        where: { id: unidadId }
+      });
+
+      if (!unidad) {
+        throw new ErrorAplicacion("Unidad no encontrada", 404);
+      }
+
+      // Obtener la propiedad relacionada
+      const propiedad = await Propiedad.findOne({
+        where: { id: unidad.propiedad_id }
+      });
+
+      if (!propiedad) {
+        throw new ErrorAplicacion("Propiedad relacionada no encontrada", 404);
+      }
+
+      // Si se proporciona renteroId, verificar que la propiedad pertenezca al rentero
+      if (renteroId && propiedad.rentero_id !== renteroId) {
+        throw new ErrorAplicacion("No tienes permisos para ver esta unidad", 403);
+      }
+
+      // Obtener el rentero
+      const rentero = await Rentero.findOne({
+        where: { id: propiedad.rentero_id },
+        attributes: ["id", "nombre", "apellido", "telefono", "email"]
+      });
+
+      if (!rentero) {
+        throw new ErrorAplicacion("Rentero no encontrado", 404);
+      }
+
+      // Formatear la respuesta
+      const uniJSON = unidad.toJSON();
+      const propJSON = propiedad.toJSON();
+      const renteroJSON = rentero.toJSON();
+
+      const unidadFormateada = {
+        id: uniJSON.id,
+        nombre: uniJSON.nombre,
+        precio: parseFloat(uniJSON.precio),
+        estado: uniJSON.estado,
+        descripcion: uniJSON.descripcion,
+        imagenes: uniJSON.imagenes,
+        propiedad_id: uniJSON.propiedad_id,
+        ubicacion: {
+          nombre: propJSON.nombre,
+          direccion: `${propJSON.calle} ${propJSON.numero}, ${propJSON.colonia}`,
+          calle: propJSON.calle,
+          colonia: propJSON.colonia,
+          numero: propJSON.numero,
+          codigo_postal: propJSON.codigo_postal,
+          municipio: propJSON.municipio,
+          estado: propJSON.estado,
+          coordenadas: propJSON.ubicacion,
+        },
+        rentero: {
+          id: renteroJSON.id,
+          nombre: `${renteroJSON.nombre} ${renteroJSON.apellido}`,
+          telefono: renteroJSON.telefono,
+          email: renteroJSON.email,
+        },
+      };
+
+      return {
+        success: true,
+        data: unidadFormateada,
+      };
+    } catch (error) {
+      if (error instanceof ErrorAplicacion) {
+        throw error;
+      }
+      throw new Error(`Error en servicio al obtener unidad: ${error.message}`);
+    }
+  }
+
 
   /**
    * Actualiza una unidad específica
@@ -526,7 +559,56 @@ class PropiedadService {
   }
 
   /**
-   * Elimina una unidad (soft delete cambiando estado)
+   * Registra una nueva unidad en la base de datos
+   * @param {Object} datosUnidad - Datos de la unidad a registrar
+   * @param {number} renteroId - ID del rentero autenticado
+   * @returns {Promise<Object>} Resultado del registro
+   */
+  async registrarUnidad(datosUnidad, renteroId) {
+    const transaccion = await sequelize.transaction();
+
+    try {
+      // Verificar que la propiedad existe y pertenece al rentero autenticado
+      const propiedad = await Propiedad.findOne({
+        where: {
+          id: datosUnidad.propiedad_id,
+          rentero_id: renteroId
+        },
+        transaction: transaccion
+      });
+
+      if (!propiedad) {
+        throw new ErrorAplicacion('La propiedad no existe o no te pertenece', 403);
+      }
+
+      // Preparar datos para la unidad
+      const unidadData = {
+        propiedad_id: datosUnidad.propiedad_id,
+        nombre: datosUnidad.nombre.trim(),
+        precio: parseFloat(datosUnidad.precio),
+        estado: datosUnidad.estado || 'libre',
+        descripcion: datosUnidad.descripcion || null,
+        imagenes: datosUnidad.imagenes || null
+      };
+
+      // Crear la unidad
+      const nuevaUnidad = await Unidad.create(unidadData, { transaction: transaccion });
+
+      await transaccion.commit();
+
+      return {
+        success: true,
+        mensaje: 'Unidad registrada exitosamente',
+        data: nuevaUnidad
+      };
+    } catch (error) {
+      await transaccion.rollback();
+      throw manejarErrorRegistro(error);
+    }
+  }
+
+  /**
+   * Elimina una unidad completamente de la base de datos (HARD DELETE)
    * @param {number} unidadId - ID de la unidad
    * @param {number} renteroId - ID del rentero autenticado
    * @returns {Promise<Object>} Resultado de la eliminación
@@ -535,7 +617,7 @@ class PropiedadService {
     const transaccion = await sequelize.transaction();
 
     try {
-      // Buscar la unidad
+      // 1. Buscar la unidad
       const unidad = await Unidad.findOne({
         where: { id: unidadId },
         transaction: transaccion
@@ -545,7 +627,7 @@ class PropiedadService {
         throw new ErrorAplicacion('La unidad no existe', 404);
       }
 
-      // Verificar que la propiedad pertenezca al rentero
+      // 2. Verificar que la propiedad pertenezca al rentero
       const propiedad = await Propiedad.findOne({
         where: {
           id: unidad.propiedad_id,
@@ -558,15 +640,28 @@ class PropiedadService {
         throw new ErrorAplicacion('No tienes permisos para eliminar esta unidad', 403);
       }
 
-      // Soft delete - cambiar estado a 'inactiva'
-      await unidad.update({ estado: 'inactiva' }, { transaction: transaccion });
+      // 3. (Opcional) Verificar si la unidad está ocupada
+      if (unidad.estado === 'ocupada') {
+        throw new ErrorAplicacion('No se puede eliminar una unidad que está ocupada', 400);
+      }
+
+      // 4. Eliminar completamente la unidad
+      const resultado = await Unidad.destroy({
+        where: { id: unidadId },
+        transaction: transaccion
+      });
 
       await transaccion.commit();
 
-      return {
-        success: true,
-        mensaje: 'Unidad eliminada exitosamente'
-      };
+      if (resultado > 0) {
+        return {
+          success: true,
+          mensaje: 'Unidad eliminada exitosamente',
+          unidadId: unidadId
+        };
+      } else {
+        throw new ErrorAplicacion('No se pudo eliminar la unidad', 500);
+      }
     } catch (error) {
       await transaccion.rollback();
       throw manejarErrorRegistro(error);
