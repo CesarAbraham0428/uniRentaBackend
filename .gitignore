@@ -4,7 +4,7 @@ credentials/
 uploads/rentero/
 uploads/temp/*
 
-docs/
+#docs/
 
 .env
 
