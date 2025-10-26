@@ -83,6 +83,31 @@ export const registrarPropiedad = async (req, res, next) => {
   }
 };
 
+export const actualizarPropiedad = async (req, res, next) => {
+  try {
+    const { propiedadId } = req.params;
+    const renteroId = req.usuario.id; 
+    const datosActualizacion = req.body;
+
+    if (!propiedadId || isNaN(propiedadId)) {
+      return res.status(400).json({
+        success: false,
+        mensaje: 'ID de propiedad inválido'
+      });
+    }
+
+    const resultado = await PropiedadService.actualizarPropiedad(
+      propiedadId,
+      datosActualizacion,
+      renteroId
+    );
+
+    res.status(200).json(resultado);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const obtenerPropiedadesDelRentero = async (req, res, next) => {
   try {
     const renteroId = req.usuario.id; // Del middleware de autenticación
