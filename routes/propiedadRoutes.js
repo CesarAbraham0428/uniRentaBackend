@@ -8,6 +8,7 @@ import {
   obtenerPropiedadPorId,
   obtenerPropiedadesConFiltros,
   registrarPropiedad,
+  eliminarPropiedad,
   obtenerPropiedadesDelRentero,
   registrarUnidad,
   obtenerUnidadesPorPropiedad,
@@ -56,6 +57,7 @@ router.post('/registrar',
   registrarPropiedad
 );
 
+  router.delete('/eliminar/:propiedadId', autenticarToken, eliminarPropiedad);
 
 router.get('/rentero/mis-propiedades', autenticarToken, obtenerPropiedadesDelRentero);
 

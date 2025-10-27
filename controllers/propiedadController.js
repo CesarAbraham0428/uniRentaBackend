@@ -83,6 +83,18 @@ export const registrarPropiedad = async (req, res, next) => {
   }
 };
 
+export const eliminarPropiedad = async (req, res, next) => {
+  try {
+    const { propiedadId } = req.params;
+    const renteroId = req.usuario.id;
+
+    const resultado = await PropiedadService.eliminarPropiedad(propiedadId, renteroId);
+    res.status(200).json(resultado);
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const obtenerPropiedadesDelRentero = async (req, res, next) => {
   try {
     const renteroId = req.usuario.id; // Del middleware de autenticación

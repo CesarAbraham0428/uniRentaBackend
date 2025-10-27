@@ -342,7 +342,30 @@ class PropiedadService {
     }
   }
 
-  // NUEVOS MÉTODOS PARA MANEJAR UNIDADES
+
+async eliminarPropiedad(propiedadId, renteroId){
+    try {
+      const propiedad = await Propiedad.findOne({
+        where: {
+          id: propiedadId,
+          rentero_id: renteroId
+        }
+      });
+
+      if (!propiedad) {
+        throw new ErrorAplicacion('La propiedad no existe o no te pertenece', 403);
+      }
+
+      await propiedad.destroy();
+
+      return {
+        success: true,
+        mensaje: 'Propiedad eliminada exitosamente'
+      };
+    } catch (error) {
+      throw error;
+    }
+  }
 
   /**
    * Obtiene todas las propiedades de un rentero específico
