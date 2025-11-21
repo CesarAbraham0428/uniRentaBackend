@@ -15,10 +15,10 @@ const sequelize = new Sequelize(
       freezeTableName: true,    // true -> evita pluralización automática de tablas - Ejemplo usuario = usuario de lo contraio seria usuarios
     },
     dialectOptions: {
-      ssl: {
+/*       ssl: {
         require: true,
         rejectUnauthorized: false,
-      },
+      }, */
     }
   }
 );
