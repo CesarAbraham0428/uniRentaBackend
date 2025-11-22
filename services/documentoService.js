@@ -1,25 +1,27 @@
 import Documento from '../models/documento.js';
 import TipoDocumento from '../models/tipo_documento.js';
 
-import { ProxyValidadorDocumento } from '../utils/ocr/proxyValidadorDocumento.js';
+import { ProxyDocumento } from '../utils/ocr/proxyDocumento.js';
 import { moverArchivo, limpiarArchivoTemporal } from '../utils/files/manejadorArchivos.js';
 
 // Instancia global del proxy optimizada para velocidad - TTL UNIFICADO A 3 MINUTOS
-const proxyValidador = new ProxyValidadorDocumento({
+const proxyValidador = new ProxyDocumento({
+  configReal: {
+    configOCR: {
+      intentosMaximos: 3,
+      timeout: 30000
+    },
+    configServicio: {
+      umbralSimilitudNombre: 0.9,
+      umbralInvalido: 40,
+      umbralParcial: 70
+    }
+  },
   configCache: {
     ttlInvalido: 180,  // 3 minutos unificado para documentos inválidos
     ttlParcial: 180,    // 3 minutos unificado para documentos parciales
     useClones: false,   // Máxima velocidad
     enableStats: false  // Sin estadísticas
-  },
-  configOCR: {
-    intentosMaximos: 3,
-    timeout: 30000
-  },
-  configServicio: {
-    umbralSimilitudNombre: 0.9,
-    umbralInvalido: 40,
-    umbralParcial: 70
   }
 });
 

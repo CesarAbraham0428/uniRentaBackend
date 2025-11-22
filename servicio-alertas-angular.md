@@ -129,7 +129,8 @@ export class DocumentoValidacionService {
         break;
 
       case 'faltan_campos_al_documento':
-        this.mostrarErrorCamposFaltantes(detalles);
+        const camposFaltantes = detalles?.camposFaltantes || [];
+        this.mostrarErrorCamposFaltantes(camposFaltantes);
         break;
 
       case 'documento_invalido':

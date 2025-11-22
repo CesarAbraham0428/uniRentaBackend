@@ -234,44 +234,6 @@ export class ServicioValidadorDocumento {
   }
 
   /**
-   * Calcula estadísticas de validación para un conjunto de resultados
-   * @param {ResultadoValidacion[]} resultados - Array de resultados
-   * @returns {Object} - Estadísticas
-   */
-  calcularEstadisticas(resultados) {
-    if (!Array.isArray(resultados) || resultados.length === 0) {
-      return {
-        total: 0,
-        validos: 0,
-        parciales: 0,
-        invalidos: 0,
-        porcentajeValidos: 0,
-        porcentajeParciales: 0,
-        porcentajeInvalidos: 0,
-        porcentajePromedio: 0
-      };
-    }
-
-    const validos = resultados.filter(r => r.esValido).length;
-    const parciales = resultados.filter(r => r.tipoValidacion === 'PARCIAL').length;
-    const invalidos = resultados.filter(r => r.tipoValidacion === 'INVALIDO').length;
-    const total = resultados.length;
-
-    const porcentajePromedio = resultados.reduce((sum, r) => sum + r.porcentaje, 0) / total;
-
-    return {
-      total,
-      validos,
-      parciales,
-      invalidos,
-      porcentajeValidos: (validos / total * 100).toFixed(2),
-      porcentajeParciales: (parciales / total * 100).toFixed(2),
-      porcentajeInvalidos: (invalidos / total * 100).toFixed(2),
-      porcentajePromedio: porcentajePromedio.toFixed(2)
-    };
-  }
-
-  /**
    * Actualiza la configuración del servicio
    * @param {Object} nuevaConfig - Nueva configuración
    */
@@ -285,36 +247,5 @@ export class ServicioValidadorDocumento {
    */
   obtenerConfiguracion() {
     return { ...this.configuracion };
-  }
-
-  /**
-   * Valida si un texto tiene contenido significativo
-   * @param {string} texto - Texto a validar
-   * @returns {boolean}
-   */
-  tieneContenidoSignificativo(texto) {
-    if (!texto || typeof texto !== 'string') {
-      return false;
-    }
-
-    const textoNormalizado = this.normalizarTexto(texto);
-    const palabras = textoNormalizado.split(' ').filter(palabra => palabra.length > 2);
-    
-    return palabras.length >= 3; // Requiere al menos 3 palabras significativas
-  }
-
-  /**
-   * Extrae palabras clave de un texto
-   * @param {string} texto - Texto de origen
-   * @param {number} maxPalabras - Máximo de palabras a extraer
-   * @returns {string[]} - Palabras clave
-   */
-  extraerPalabrasClave(texto, maxPalabras = 10) {
-    const textoNormalizado = this.normalizarTexto(texto);
-    const palabras = textoNormalizado.split(' ')
-      .filter(palabra => palabra.length > 2)
-      .slice(0, maxPalabras);
-    
-    return [...new Set(palabras)]; // Eliminar duplicados
   }
 }

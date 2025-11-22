@@ -28,8 +28,8 @@ export class ResultadoValidacion {
    * @returns {string} - Tipo de validación
    */
   static determinarTipoValidacion(porcentaje) {
-    if (porcentaje < 40) return 'INVALIDO';
-    if (porcentaje < 70) return 'PARCIAL';
+    if (porcentaje < 40) return 'DOCUMENTO_INVALIDO';
+    if (porcentaje < 70) return 'FALTAN_CAMPOS_AL_DOCUMENTO';
     return 'VALIDO';
   }
 
@@ -44,7 +44,7 @@ export class ResultadoValidacion {
     return new ResultadoValidacion(
       false,
       porcentaje,
-      'INVALIDO',
+      'DOCUMENTO_INVALIDO',
       {
         camposFaltantes,
         camposTotales,
@@ -64,7 +64,7 @@ export class ResultadoValidacion {
     return new ResultadoValidacion(
       false,
       porcentaje,
-      'PARCIAL',
+      'FALTAN_CAMPOS_AL_DOCUMENTO',
       {
         camposFaltantes,
         camposTotales,
@@ -149,7 +149,9 @@ export class ResultadoValidacion {
    * @returns {boolean}
    */
   debeSerCacheado() {
-    return this.tipoValidacion === 'INVALIDO' || this.tipoValidacion === 'PARCIAL';
+    return this.tipoValidacion === 'DOCUMENTO_INVALIDO' || 
+           this.tipoValidacion === 'FALTAN_CAMPOS_AL_DOCUMENTO' || 
+           this.tipoValidacion === 'NOMBRE_NO_COINCIDE';
   }
 
   /**
@@ -158,9 +160,11 @@ export class ResultadoValidacion {
    */
   obtenerTTL() {
     switch (this.tipoValidacion) {
-      case 'INVALIDO':
+      case 'DOCUMENTO_INVALIDO':
         return 180; // 3 minutos unificado
-      case 'PARCIAL':
+      case 'FALTAN_CAMPOS_AL_DOCUMENTO':
+        return 180; // 3 minutos unificado
+      case 'NOMBRE_NO_COINCIDE':
         return 180; // 3 minutos unificado
       default:
         return 0; // No cachear
@@ -175,10 +179,10 @@ export class ResultadoValidacion {
     const { camposFaltantes, camposTotales } = this.detalles;
     
     switch (this.tipoValidacion) {
-      case 'INVALIDO':
+      case 'DOCUMENTO_INVALIDO':
         return `DOCUMENTO_INVALIDO: Faltan ${camposFaltantes.length} campo(s): ${camposFaltantes.join(', ')}`;
       
-      case 'PARCIAL':
+      case 'FALTAN_CAMPOS_AL_DOCUMENTO':
         return `FALTAN_CAMPOS_AL_DOCUMENTO: Faltan ${camposFaltantes.length} campo(s): ${camposFaltantes.join(', ')}`;
       
       case 'NOMBRE_NO_COINCIDE':
