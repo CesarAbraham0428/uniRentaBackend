@@ -87,9 +87,6 @@ export const validarToken = async (token) => {
 };
 
 
-/**
- * Devuelve las unidades relacionadas a un estudiante (array de unidades).
- */
 export const obtenerUnidadesAsignadas = async (estudianteId) => {
   const relaciones = await EstudianteUnidad.findAll({
     where: { estudiante_id: estudianteId },
@@ -165,3 +162,4 @@ export const obtenerUnidadAsignadaPorId = async (estudianteId, unidadId) => {
     } : null
   };
 };
+
