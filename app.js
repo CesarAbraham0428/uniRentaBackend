@@ -7,10 +7,12 @@ import propiedadRoutes from './routes/propiedadRoutes.js';
 import renteroRoutes from './routes/renteroRoutes.js';
 import documentoRoutes from './routes/documentoRoutes.js';
 import universidadRoutes from './routes/universidadRoutes.js';
+import EstudianteRoutes from './routes/estudianteRoutes.js';
 
 import Unidad from './models/unidad.js';
 import Propiedad from './models/propiedad.js';
 import Rentero from './models/rentero.js';
+import Estudiante from './models/estudiante.js';
 
 Unidad.belongsTo(Propiedad, { foreignKey: 'propiedad_id', as: 'propiedad' });
 Propiedad.belongsTo(Rentero, { foreignKey: 'rentero_id', as: 'rentero' });
@@ -30,8 +32,10 @@ app.use(express.urlencoded({ limit: '20mb', extended: true }));
 
 app.use('/propiedades', propiedadRoutes);
 app.use('/rentero', renteroRoutes);
+app.use('/estudiante', EstudianteRoutes);
 app.use('/documentos', documentoRoutes);
 app.use('/universidades', universidadRoutes);
+
 
 app.use(manejadorErrores);
 

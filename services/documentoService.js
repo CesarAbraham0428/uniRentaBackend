@@ -4,11 +4,13 @@ import TipoDocumento from '../models/tipo_documento.js';
 import { ProxyValidadorDocumento } from '../utils/ocr/proxyValidadorDocumento.js';
 import { moverArchivo, limpiarArchivoTemporal } from '../utils/files/manejadorArchivos.js';
 
-// Instancia global del proxy para reutilización
+// Instancia global del proxy optimizada para velocidad - TTL UNIFICADO A 3 MINUTOS
 const proxyValidador = new ProxyValidadorDocumento({
   configCache: {
-    ttlInvalido: 300,  // 5 minutos
-    ttlParcial: 180    // 3 minutos
+    ttlInvalido: 180,  // 3 minutos unificado para documentos inválidos
+    ttlParcial: 180,    // 3 minutos unificado para documentos parciales
+    useClones: false,   // Máxima velocidad
+    enableStats: false  // Sin estadísticas
   },
   configOCR: {
     intentosMaximos: 3,
@@ -23,9 +25,7 @@ const proxyValidador = new ProxyValidadorDocumento({
 
 export const procesarDocumento = async (rutaDocumento, tipo_id, opcionesValidacion = {}) => {
   try {
-    console.log(`Procesando documento: ${rutaDocumento} con tipo: ${tipo_id}`);
-    
-    // Usar el nuevo proxy para validación con caché
+    // Usar el proxy optimizado para validación con caché
     const resultadoValidacion = await proxyValidador.validarDocumento(rutaDocumento, tipo_id, opcionesValidacion);
     
     // El resultado ya incluye el manejo de errores específicos
@@ -33,22 +33,36 @@ export const procesarDocumento = async (rutaDocumento, tipo_id, opcionesValidaci
       // Lanzar error con el mensaje específico del resultado
       const error = new Error(resultadoValidacion.generarMensaje());
       error.errorControlado = true;
-      error.tipo = resultadoValidacion.tipoValidacion;
+      error.codigoEstado = 400;
+      error.tipo = 'VALIDACION_DOCUMENTO';
+      
+      // Convertir tipoValidacion a subtipo esperado por el frontend
+      switch (resultadoValidacion.tipoValidacion) {
+        case 'NOMBRE_NO_COINCIDE':
+          error.subtipo = 'nombre_no_coincide';
+          break;
+        case 'FALTAN_CAMPOS_AL_DOCUMENTO':
+          error.subtipo = 'faltan_campos_al_documento';
+          break;
+        case 'DOCUMENTO_INVALIDO':
+          error.subtipo = 'documento_invalido';
+          break;
+        default:
+          error.subtipo = 'documento_invalido';
+      }
+      
       error.detalles = resultadoValidacion.detalles;
       throw error;
     }
 
-    console.log(`Documento validado exitosamente (${resultadoValidacion.porcentaje}% de reconocimiento)`);
     const carpetaDestino = obtenerCarpetaDestino(tipo_id);
     const rutaFinal = moverArchivo(rutaDocumento, carpetaDestino);
-    console.log(`Documento movido a: ${rutaFinal}`);
     
     return { 
       rutaFinal,
       validacion: resultadoValidacion.toPlainObject()
     };
   } catch (error) {
-    console.error(`Error procesando documento ${rutaDocumento}:`, error.message);
     limpiarArchivoTemporal(rutaDocumento);
     throw error;
   }
@@ -75,60 +89,16 @@ const obtenerCarpetaDestino = (tipo_id) => {
   return 'rentero/propiedad';
 };
 
-export const obtenerDocumentos = async () => {
-  return await TipoDocumento.findAll();
-};
-
 export const obtenerTipoDocumentoPorID = async (id) => {
   return await TipoDocumento.findByPk(id);
 };
 
-/**
- * Procesa múltiples documentos en lote usando la nueva arquitectura
- * @param {Array} documentos - Array de {rutaArchivo, tipoId, opciones}
- * @param {Object} opciones - Opciones de procesamiento
- * @returns {Promise<Array>} - Resultados del procesamiento
- */
-export const procesarLoteDocumentos = async (documentos, opciones = {}) => {
-  try {
-    console.log(`Procesando lote de ${documentos.length} documentos`);
-    
-    const resultados = await proxyValidador.validarLote(documentos, opciones);
-    
-    // Procesar solo los documentos válidos
-    const documentosValidos = resultados.filter(r => r.esValido && !r.error);
-    
-    for (const resultado of documentosValidos) {
-      const documentoOriginal = documentos.find(d => 
-        d.rutaArchivo === resultado.detalles?.rutaArchivo
-      );
-      
-      if (documentoOriginal) {
-        const carpetaDestino = obtenerCarpetaDestino(documentoOriginal.tipoId);
-        const rutaFinal = moverArchivo(documentoOriginal.rutaArchivo, carpetaDestino);
-        resultado.rutaFinal = rutaFinal;
-      }
-    }
-    
-    console.log(`Lote procesado: ${documentosValidos.length} válidos, ${resultados.length - documentosValidos.length} inválidos`);
-    
-    return resultados;
-  } catch (error) {
-    console.error(`Error procesando lote de documentos:`, error.message);
-    throw error;
-  }
+export const obtenerDocumentos = async () => {
+  return await TipoDocumento.findAll();
 };
 
 /**
- * Obtiene estadísticas del sistema de validación
- * @returns {Object} - Estadísticas completas
- */
-export const obtenerEstadisticasValidacion = () => {
-  return proxyValidador.obtenerEstadisticas();
-};
-
-/**
- * Verifica si un documento está en caché
+ * Verifica si un documento está en caché - OPERACIÓN CRÍTICA PARA VELOCIDAD
  * @param {string} rutaArchivo - Ruta del archivo
  * @returns {Promise<boolean>} - true si está en caché
  */
@@ -141,12 +111,4 @@ export const verificarCacheDocumento = async (rutaArchivo) => {
  */
 export const limpiarCacheValidacion = () => {
   proxyValidador.limpiarCache();
-};
-
-/**
- * Obtiene información de salud del sistema
- * @returns {Object} - Información de salud
- */
-export const obtenerSaludValidacion = () => {
-  return proxyValidador.obtenerSalud();
 };

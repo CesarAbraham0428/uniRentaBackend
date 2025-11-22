@@ -1,11 +1,11 @@
 import { ValidadorOCR } from "./validadorOCR.js";
 import { ServicioValidadorDocumento } from "./servicioValidadorDocumento.js";
-import { ManejadorCache } from "./ManejadorCache.js";
+import { ManejadorCache } from "./manejadorCache.js";
 import { ErrorDocumento } from "../errores/erroresDocumento.js";
 
 /**
- * Proxy que gestiona la validación de documentos con caché integrada
- * Es el punto de entrada principal para la validación de documentos
+ * Proxy optimizado para validación de documentos con caché integrada
+ * Enfocado en velocidad máxima para documentos cacheados
  */
 export class ProxyValidadorDocumento {
   /**
@@ -24,44 +24,28 @@ export class ProxyValidadorDocumento {
       new ServicioValidadorDocumento(config.configServicio || {});
     this.manejadorCache = config.manejadorCache || 
       new ManejadorCache(config.configCache || {});
-    
-    // Estadísticas del proxy
-    this.estadisticas = {
-      validacionesTotales: 0,
-      cacheHits: 0,
-      cacheMisses: 0,
-      ocrLlamadas: 0,
-      errores: 0
-    };
   }
 
   /**
    * Valida un documento completo (método principal)
+   * Optimizado para velocidad máxima en cache hits
    * @param {string} rutaArchivo - Ruta del archivo a validar
    * @param {number} tipoId - ID del tipo de documento
    * @param {Object} opcionesValidacion - Opciones adicionales de validación
    * @returns {Promise<ResultadoValidacion>} - Resultado de la validación
    */
   async validarDocumento(rutaArchivo, tipoId, opcionesValidacion = {}) {
-    this.estadisticas.validacionesTotales++;
-    
     try {
       // 1. Calcular hash del archivo
       const hash = await this.validadorOCR.calcularHashArchivo(rutaArchivo);
       
-      // 2. Verificar caché
+      // 2. Verificar caché - RETORNO RÁPIDO SI ESTÁ EN CACHE
       const resultadoCache = this.manejadorCache.obtener(hash);
       if (resultadoCache) {
-        this.estadisticas.cacheHits++;
-        console.log(`Cache HIT para hash: ${hash.substring(0, 8)}...`);
         return resultadoCache;
       }
       
-      this.estadisticas.cacheMisses++;
-      console.log(`Cache MISS para hash: ${hash.substring(0, 8)}...`);
-      
-      // 3. Extraer texto mediante OCR
-      this.estadisticas.ocrLlamadas++;
+      // 3. Extraer texto mediante OCR (solo si no está en cache)
       const { texto } = await this.validadorOCR.extraerTextoYHash(rutaArchivo);
       
       // 4. Validar campos y lógica de negocio
@@ -76,17 +60,12 @@ export class ProxyValidadorDocumento {
       
       // 6. Guardar en caché si aplica
       if (resultado.debeSerCacheado()) {
-        const guardado = this.manejadorCache.guardar(hash, resultado);
-        if (guardado) {
-          console.log(`Resultado guardado en caché (${resultado.obtenerTTL()}s TTL)`);
-        }
+        this.manejadorCache.guardar(hash, resultado);
       }
       
       return resultado;
       
     } catch (error) {
-      this.estadisticas.errores++;
-      
       // Manejar errores específicos
       if (error.errorControlado) {
         throw error;
@@ -215,7 +194,6 @@ export class ProxyValidadorDocumento {
    */
   limpiarCache() {
     this.manejadorCache.limpiarTodo();
-    console.log('Caché limpiado completamente');
   }
 
   /**
@@ -232,50 +210,6 @@ export class ProxyValidadorDocumento {
     }
   }
 
-  /**
-   * Obtiene estadísticas completas del proxy y sus componentes
-   * @returns {Object}
-   */
-  obtenerEstadisticas() {
-    const cacheStats = this.manejadorCache.obtenerEstadisticas();
-    
-    return {
-      proxy: {
-        ...this.estadisticas,
-        hitRate: this.estadisticas.cacheHits + this.estadisticas.cacheMisses > 0 
-          ? (this.estadisticas.cacheHits / (this.estadisticas.cacheHits + this.estadisticas.cacheMisses) * 100).toFixed(2) + '%'
-          : '0%'
-      },
-      cache: cacheStats,
-      ocr: this.validadorOCR.obtenerEstado(),
-      servicio: this.servicioValidador.obtenerConfiguracion()
-    };
-  }
-
-  /**
-   * Obtiene información de salud del sistema
-   * @returns {Object}
-   */
-  obtenerSalud() {
-    const stats = this.obtenerEstadisticas();
-    
-    return {
-      estado: 'operativo',
-      componentes: {
-        ocr: stats.ocr.configurado ? 'ok' : 'error',
-        cache: stats.cache.stats.keys >= 0 ? 'ok' : 'error',
-        servicio: 'ok'
-      },
-      rendimiento: {
-        hitRate: stats.proxy.hitRate,
-        validacionesTotales: stats.proxy.validacionesTotales,
-        errores: stats.proxy.errores,
-        tasaErrores: stats.proxy.validacionesTotales > 0 
-          ? (stats.proxy.errores / stats.proxy.validacionesTotales * 100).toFixed(2) + '%'
-          : '0%'
-      }
-    };
-  }
 
   /**
    * Actualiza la configuración de los componentes
@@ -300,21 +234,8 @@ export class ProxyValidadorDocumento {
    */
   cerrar() {
     this.manejadorCache.cerrar();
-    console.log('ProxyValidadorDocumento cerrado');
   }
 
-  /**
-   * Reinicia estadísticas
-   */
-  reiniciarEstadisticas() {
-    this.estadisticas = {
-      validacionesTotales: 0,
-      cacheHits: 0,
-      cacheMisses: 0,
-      ocrLlamadas: 0,
-      errores: 0
-    };
-  }
 
   /**
    * Exporta configuración actual

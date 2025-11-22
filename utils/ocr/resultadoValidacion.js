@@ -153,22 +153,22 @@ export class ResultadoValidacion {
   }
 
   /**
-   * Obtiene el TTL en segundos según el tipo de validación
+   * Obtiene el TTL en segundos - UNIFICADO A 3 MINUTOS PARA TODOS
    * @returns {number}
    */
   obtenerTTL() {
     switch (this.tipoValidacion) {
       case 'INVALIDO':
-        return 300; // 5 minutos
+        return 180; // 3 minutos unificado
       case 'PARCIAL':
-        return 180; // 3 minutos
+        return 180; // 3 minutos unificado
       default:
         return 0; // No cachear
     }
   }
 
   /**
-   * Genera un mensaje descriptivo del resultado
+   * Genera un mensaje descriptivo del resultado - FORMATO EXACTO DEL BACKEND ORIGINAL
    * @returns {string}
    */
   generarMensaje() {
