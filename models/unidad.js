@@ -20,6 +20,10 @@ const Unidad = sequelize.define('unidad', {
   estado: {
     type: DataTypes.STRING
   },
+  visible: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: true // true = Libre/visible, false = Ocupada/oculta (control manual del rentero)
+  },
   descripcion: {
     type: DataTypes.JSONB
   },

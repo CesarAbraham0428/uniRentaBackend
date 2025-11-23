@@ -23,7 +23,7 @@ class PropiedadService {
   async obtenerTodasLasPropiedades() {
     try {
       const unidades = await Unidad.findAll({
-        where: { estado: "libre" },
+        where: { visible: true },
       });
 
       const propiedadesFormateadas = [];
@@ -192,7 +192,7 @@ class PropiedadService {
         rangoKm,
       } = filtros;
 
-      const whereUnidad = { estado: "libre" };
+      const whereUnidad = { visible: true }; // Solo mostrar unidades marcadas como "Libre" por el rentero
       const wherePropiedad = { visible: true };
 
       if (precioMin || precioMax) {
@@ -595,6 +595,7 @@ class PropiedadService {
         nombre: uniJSON.nombre,
         precio: parseFloat(uniJSON.precio),
         estado: uniJSON.estado,
+        visible: uniJSON.visible,
         descripcion: uniJSON.descripcion,
         imagenes: uniJSON.imagenes,
         propiedad_id: uniJSON.propiedad_id,
@@ -682,6 +683,8 @@ class PropiedadService {
       }
       if (datosActualizacion.estado)
         datosPermitidos.estado = datosActualizacion.estado;
+      if (datosActualizacion.visible !== undefined)
+        datosPermitidos.visible = datosActualizacion.visible;
       if (datosActualizacion.descripcion !== undefined)
         datosPermitidos.descripcion = datosActualizacion.descripcion;
       if (datosActualizacion.imagenes !== undefined)
@@ -734,6 +737,7 @@ class PropiedadService {
         nombre: datosUnidad.nombre.trim(),
         precio: parseFloat(datosUnidad.precio),
         estado: datosUnidad.estado || "libre",
+        visible: datosUnidad.visible !== undefined ? datosUnidad.visible : true,
         descripcion: datosUnidad.descripcion || null,
         imagenes: datosUnidad.imagenes || null,
       };
