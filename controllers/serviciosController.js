@@ -1,23 +1,26 @@
-import ServiciosService from '../services/serviciosService.js';
+import ServiciosService from "../services/serviciosService.js";
+import EstudianteUnidad from "../models/estudiante_unidad.js";
 
 /**
  * Obtiene todos los servicios disponibles
  * GET /api/servicios/disponibles
  */
-export const obtenerServiciosDisponibles = async (req, res, next) => {
+export const serviciosDisponibles = async (req, res, next) => {
   try {
-    const { solo_adicionales } = req.query;
-    const soloAdicionales = solo_adicionales === 'true';
+    // opcional: ?solo_adicionales=true para traer solo es_base = false
+    const soloAdicionales =
+      String(req.query.solo_adicionales || "").toLowerCase() === "true";
 
-    const servicios = await ServiciosService.obtenerServiciosDisponibles(soloAdicionales);
-
-    res.status(200).json({
-      success: true,
-      data: servicios,
-      mensaje: 'Servicios obtenidos exitosamente'
+    const servicios = await ServiciosService.obtenerServiciosDisponibles({
+      soloAdicionales,
     });
-  } catch (error) {
-    next(error);
+
+    return res.status(200).json({ success: true, data: servicios });
+  } catch (err) {
+    console.error("ERROR /servicios/disponibles:", err && (err.stack || err));
+    return res
+      .status(500)
+      .json({ success: false, mensaje: "Error interno del servidor" });
   }
 };
 
@@ -32,7 +35,7 @@ export const obtenerServiciosBase = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: servicios,
-      mensaje: 'Servicios base obtenidos exitosamente'
+      mensaje: "Servicios base obtenidos exitosamente",
     });
   } catch (error) {
     next(error);
@@ -50,23 +53,27 @@ export const calcularPrecioAsignacion = async (req, res, next) => {
     if (!estudianteUnidadId || isNaN(estudianteUnidadId)) {
       return res.status(400).json({
         success: false,
-        mensaje: 'ID de asignación inválido'
+        mensaje: "ID de asignación inválido",
       });
     }
 
-    const detallePrecios = await ServiciosService.calcularPrecioConServicios(parseInt(estudianteUnidadId));
+    const detallePrecios = await ServiciosService.calcularPrecioConServicios(
+      parseInt(estudianteUnidadId)
+    );
 
     res.status(200).json({
       success: true,
       data: detallePrecios,
-      mensaje: 'Precio calculado exitosamente'
+      mensaje: "Precio calculado exitosamente",
     });
   } catch (error) {
-    if (error.message === 'Asignación no encontrada' ||
-        error.message === 'Unidad asociada no encontrada') {
+    if (
+      error.message === "Asignación no encontrada" ||
+      error.message === "Unidad asociada no encontrada"
+    ) {
       return res.status(404).json({
         success: false,
-        mensaje: error.message
+        mensaje: error.message,
       });
     }
     next(error);
@@ -86,14 +93,14 @@ export const agregarServicioAAsignacion = async (req, res, next) => {
     if (!estudianteUnidadId || isNaN(estudianteUnidadId)) {
       return res.status(400).json({
         success: false,
-        mensaje: 'ID de asignación inválido'
+        mensaje: "ID de asignación inválido",
       });
     }
 
     if (!servicio_id || isNaN(servicio_id)) {
       return res.status(400).json({
         success: false,
-        mensaje: 'ID de servicio inválido'
+        mensaje: "ID de servicio inválido",
       });
     }
 
@@ -105,22 +112,27 @@ export const agregarServicioAAsignacion = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: resultado,
-      mensaje: 'Servicio agregado exitosamente'
+      mensaje: "Servicio agregado exitosamente",
     });
   } catch (error) {
-    if (error.message === 'Asignación no encontrada' ||
-        error.message === 'Servicio no encontrado o inactivo') {
+    if (
+      error.message === "Asignación no encontrada" ||
+      error.message === "Servicio no encontrado o inactivo"
+    ) {
       return res.status(404).json({
         success: false,
-        mensaje: error.message
+        mensaje: error.message,
       });
     }
 
-    if (error.message === 'El servicio ya está agregado a esta asignación' ||
-        error.message === 'Los servicios base se agregan automáticamente al rentar') {
+    if (
+      error.message === "El servicio ya está agregado a esta asignación" ||
+      error.message ===
+        "Los servicios base se agregan automáticamente al rentar"
+    ) {
       return res.status(400).json({
         success: false,
-        mensaje: error.message
+        mensaje: error.message,
       });
     }
 
@@ -136,10 +148,15 @@ export const eliminarServicioDeAsignacion = async (req, res, next) => {
   try {
     const { estudianteUnidadId, servicioId } = req.params;
 
-    if (!estudianteUnidadId || isNaN(estudianteUnidadId) || !servicioId || isNaN(servicioId)) {
+    if (
+      !estudianteUnidadId ||
+      isNaN(estudianteUnidadId) ||
+      !servicioId ||
+      isNaN(servicioId)
+    ) {
       return res.status(400).json({
         success: false,
-        mensaje: 'IDs inválidos'
+        mensaje: "IDs inválidos",
       });
     }
 
@@ -151,20 +168,20 @@ export const eliminarServicioDeAsignacion = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: resultado,
-      mensaje: 'Servicio eliminado exitosamente'
+      mensaje: "Servicio eliminado exitosamente",
     });
   } catch (error) {
-    if (error.message === 'El servicio no está asociado a esta asignación') {
+    if (error.message === "El servicio no está asociado a esta asignación") {
       return res.status(404).json({
         success: false,
-        mensaje: error.message
+        mensaje: error.message,
       });
     }
 
-    if (error.message === 'No puedes eliminar servicios base') {
+    if (error.message === "No puedes eliminar servicios base") {
       return res.status(400).json({
         success: false,
-        mensaje: error.message
+        mensaje: error.message,
       });
     }
 
@@ -183,22 +200,24 @@ export const obtenerServiciosPorAsignacion = async (req, res, next) => {
     if (!estudianteUnidadId || isNaN(estudianteUnidadId)) {
       return res.status(400).json({
         success: false,
-        mensaje: 'ID de asignación inválido'
+        mensaje: "ID de asignación inválido",
       });
     }
 
-    const servicios = await ServiciosService.obtenerServiciosPorAsignacion(parseInt(estudianteUnidadId));
+    const servicios = await ServiciosService.obtenerServiciosPorAsignacion(
+      parseInt(estudianteUnidadId)
+    );
 
     res.status(200).json({
       success: true,
       data: servicios,
-      mensaje: 'Servicios obtenidos exitosamente'
+      mensaje: "Servicios obtenidos exitosamente",
     });
   } catch (error) {
-    if (error.message === 'Asignación no encontrada') {
+    if (error.message === "Asignación no encontrada") {
       return res.status(404).json({
         success: false,
-        mensaje: error.message
+        mensaje: error.message,
       });
     }
     next(error);
