@@ -7,15 +7,8 @@ import { moverArchivo, limpiarArchivoTemporal } from '../utils/files/manejadorAr
 // Instancia global del proxy optimizada para velocidad - TTL UNIFICADO A 3 MINUTOS
 const proxyValidador = new ProxyDocumento({
   configReal: {
-    configOCR: {
-      intentosMaximos: 3,
-      timeout: 30000
-    },
-    configServicio: {
-      umbralSimilitudNombre: 0.9,
-      umbralInvalido: 40,
-      umbralParcial: 70
-    }
+    intentosMaximos: 3,
+    timeout: 30000
   },
   configCache: {
     ttlInvalido: 180,  // 3 minutos unificado para documentos inválidos

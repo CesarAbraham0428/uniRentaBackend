@@ -1,22 +1,18 @@
 import { Documento } from "./documento.js";
-import { ValidadorOCR } from "./validadorOCR.js";
-import { ServicioValidadorDocumento } from "./servicioValidadorDocumento.js";
+import { OCRUtils } from "./ocrUtils.js";
 import { ErrorDocumento } from "../errores/erroresDocumento.js";
 
 /**
  * Objeto real para validación de documentos
- * Contiene la lógica de negocio pura sin mecanismos de caché
+ * Implementa la lógica de negocio directamente usando utilidades OCR
  */
-export class DocumentoReal extends Documento{
+export class DocumentoReal extends Documento {
   /**
    * @param {Object} config - Configuración del validador
-   * @param {Object} config.configOCR - Configuración para OCR
-   * @param {Object} config.configServicio - Configuración para servicio
    */
   constructor(config = {}) {
     super();
-    this.validadorOCR = new ValidadorOCR(config.configOCR || {});
-    this.servicioValidador = new ServicioValidadorDocumento(config.configServicio || {});
+    this.configuracion = config;
   }
 
   /**
@@ -28,15 +24,18 @@ export class DocumentoReal extends Documento{
    */
   async validarDocumento(rutaArchivo, tipoId, opcionesValidacion = {}) {
     try {
-      // 1. Extraer texto mediante OCR
-      const { texto } = await this.validadorOCR.extraerTextoYHash(rutaArchivo);
+      // 1. Extraer texto y hash usando utilidades
+      const { texto, hash } = await OCRUtils.extraerTextoYHash(rutaArchivo, this.configuracion);
       
-      // 2. Validar campos y lógica de negocio
-      const resultado = await this.servicioValidador.validarCampos(
+      // 2. Validar campos usando utilidades
+      const resultado = await OCRUtils.validarCampos(
         texto, 
         tipoId, 
         opcionesValidacion
       );
+      
+      // 3. Asignar hash al resultado
+      resultado.asignarHash(hash);
       
       return resultado;
       
@@ -52,17 +51,11 @@ export class DocumentoReal extends Documento{
   }
 
   /**
-   * Actualiza la configuración de los componentes
+   * Actualiza la configuración del validador
    * @param {Object} config - Nueva configuración
    */
   actualizarConfiguracion(config) {
-    if (config.ocr) {
-      this.validadorOCR.actualizarConfiguracion(config.ocr);
-    }
-    
-    if (config.servicio) {
-      this.servicioValidador.actualizarConfiguracion(config.servicio);
-    }
+    this.configuracion = { ...this.configuracion, ...config };
   }
 
   /**
@@ -70,9 +63,6 @@ export class DocumentoReal extends Documento{
    * @returns {Object}
    */
   exportarConfiguracion() {
-    return {
-      ocr: this.validadorOCR.obtenerConfiguracion(),
-      servicio: this.servicioValidador.obtenerConfiguracion()
-    };
+    return { ...this.configuracion };
   }
 }
