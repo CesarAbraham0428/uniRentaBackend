@@ -477,9 +477,9 @@ class FacturaService {
         subject: `Factura de Renta - ${datosFactura.unidad.nombre}`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #2563eb;">¡Bienvenido a tu nueva unidad! 🏠</h2>
+            <h2 style="color: #2563eb;">¡Bienvenido a tu nuevo hogar! 🏠</h2>
             <p>Hola <strong>${datosFactura.estudiante.nombre}</strong>,</p>
-            <p>Tu unidad ha sido asignada exitosamente. Adjunto encontrarás el detalle de tu factura mensual.</p>
+            <p>Tu departamento ha sido asignado exitosamente. Adjunto encontrarás el detalle de tu factura mensual.</p>
 
             <div style="background: #f8fafc; padding: 20px; border-radius: 8px; margin: 20px 0;">
               <h3 style="margin-top: 0; color: #333;">Resumen:</h3>
