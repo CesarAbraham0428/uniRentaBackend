@@ -107,6 +107,7 @@ class ServiciosService {
         "Los servicios base se agregan automáticamente al rentar"
       );
 
+    // Verificar que el servicio está ofrecido por el rentero para esa unidad
     const ofertas = estudianteUnidad.unidad?.descripcion?.servicios || [];
     const ofrecido = ofertas.some((o) => {
       if (!o) return false;
@@ -122,6 +123,7 @@ class ServiciosService {
     if (!ofrecido)
       throw new Error("El servicio no está ofrecido para esta unidad");
 
+    // Validar duplicado (existente con cualquier estado)
     const relacionExistente = await EstudianteUnidadServicio.findOne({
       where: {
         estudiante_unidad_id: estudianteUnidadId,
@@ -135,24 +137,21 @@ class ServiciosService {
       throw new Error("El servicio ya está programado para activarse");
     }
 
-    const tieneActivos = await EstudianteUnidadServicio.findOne({
-      where: { estudiante_unidad_id: estudianteUnidadId, estado: "activo" },
-    });
-
-    let fechaInicio = new Date();
-    let estado = "activo";
-    if (tieneActivos) {
-      const hoy = new Date();
-      fechaInicio = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 1, 0, 0, 0);
-      estado = "pendiente";
-    }
+    // --- NUEVO COMPORTAMIENTO: activar inmediatamente ---
+    const ahora = new Date();
+    const fechaAgregado = ahora;
+    const fechaInicio = ahora; // ahora igual que fecha_agregado
+    const estado = "activo";
+    const fechaFin = null; // por defecto null
 
     await EstudianteUnidadServicio.create({
       estudiante_unidad_id: estudianteUnidadId,
       servicio_id: servicioId,
       precio_snapshot: servicio.precio,
       estado,
+      fecha_agregado: fechaAgregado,
       fecha_inicio: fechaInicio,
+      fecha_fin: fechaFin,
     });
 
     return await this.calcularPrecioConServicios(estudianteUnidadId);
@@ -262,7 +261,6 @@ class ServiciosService {
       throw err;
     }
   }
-
 }
 
 export default new ServiciosService();
