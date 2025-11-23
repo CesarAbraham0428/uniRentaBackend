@@ -7,6 +7,7 @@ import EstudianteUnidad from "../models/estudiante_unidad.js";
 
 import sequelize from "../config/baseDeDatos.js";
 import * as documentoService from "./documentoService.js";
+import serviciosService from "./serviciosService.js";
 
 import { Op, fn, col, where } from "sequelize";
 
@@ -861,6 +862,9 @@ class PropiedadService {
         unidad_id: unidadId,
         estudiante_id: estudiante.id
       }, { transaction: transaccion });
+
+      // 6) agregar servicios base automáticamente (agua, luz, internet)
+      await serviciosService.agregarServiciosBaseAAsignacion(relacion.id, transaccion);
 
       await transaccion.commit();
 
