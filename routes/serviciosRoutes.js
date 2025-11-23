@@ -8,6 +8,10 @@ import {
   eliminarServicioDeAsignacion,
   obtenerServiciosPorAsignacion,
 } from '../controllers/serviciosController.js';
+import {
+  enviarFactura,
+  obtenerDatosFactura
+} from '../controllers/facturaController.js';
 
 const router = express.Router();
 
@@ -29,5 +33,13 @@ router.post('/asignacion/:estudianteUnidadId/agregar', autenticarToken, agregarS
 
 // Eliminar un servicio de la asignación de un estudiante
 router.delete('/asignacion/:estudianteUnidadId/servicio/:servicioId', autenticarToken, eliminarServicioDeAsignacion);
+
+// ========== RUTAS DE FACTURACIÓN ==========
+
+// Obtener datos de factura (sin enviar email) - útil para previsualización
+router.get('/asignacion/:estudianteUnidadId/factura', autenticarToken, obtenerDatosFactura);
+
+// Generar y enviar factura por email (reenvío manual)
+router.post('/asignacion/:estudianteUnidadId/factura/enviar', autenticarToken, enviarFactura);
 
 export default router;

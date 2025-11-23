@@ -8,6 +8,7 @@ import EstudianteUnidad from "../models/estudiante_unidad.js";
 import sequelize from "../config/baseDeDatos.js";
 import * as documentoService from "./documentoService.js";
 import serviciosService from "./serviciosService.js";
+import facturaService from "./facturaService.js";
 
 import { Op, fn, col, where } from "sequelize";
 
@@ -867,6 +868,15 @@ class PropiedadService {
       await serviciosService.agregarServiciosBaseAAsignacion(relacion.id, unidad, transaccion);
 
       await transaccion.commit();
+
+      // 7) enviar factura por email (fuera de la transacción para no afectar la asignación si falla)
+      try {
+        await facturaService.generarYEnviarFactura(relacion.id);
+        console.log(`✅ Factura enviada exitosamente para asignación ${relacion.id}`);
+      } catch (emailError) {
+        console.error('⚠️ Error enviando factura (asignación exitosa):', emailError.message);
+        // No lanzar error - la asignación fue exitosa aunque falle el email
+      }
 
       return { success: true, mensaje: 'Estudiante asignado a la unidad', data: relacion };
     } catch (error) {
