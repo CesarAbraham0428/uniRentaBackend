@@ -49,8 +49,15 @@ const getFechaUnionYProximoCorte = async (
     : new Date(refDate);
 
   let proximoCorte = new Date(fechaUnion);
-  while (proximoCorte <= refDate) {
+
+  // Si fechaUnion está en el futuro (por timezone), forzar al menos 1 mes
+  if (fechaUnion > refDate) {
     proximoCorte = addMonths(proximoCorte, 1);
+  } else {
+    // Avanzar hasta encontrar el siguiente corte en el futuro
+    while (proximoCorte <= refDate) {
+      proximoCorte = addMonths(proximoCorte, 1);
+    }
   }
 
   return { fechaUnion, proximoCorte };
@@ -93,7 +100,7 @@ class ServiciosService {
       throw new Error("Unidad asociada no encontrada");
 
     const now = new Date();
-    const { proximoCorte } = await getFechaUnionYProximoCorte(
+    const { fechaUnion, proximoCorte } = await getFechaUnionYProximoCorte(
       estudianteUnidadId,
       now
     );
@@ -109,6 +116,7 @@ class ServiciosService {
         if (!fi) return false;
 
         // debe haber iniciado a más tardar en la fecha de factura
+        // NOTA: Los servicios agregados el mismo día de union se cobran desde el primer corte
         if (fi > fechaFactura) return false;
 
         // si tiene fecha_fin y es <= a la fecha de factura, ya no se cobra

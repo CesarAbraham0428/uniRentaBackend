@@ -24,6 +24,9 @@ export const manejadorErrores = (err, req, res, next) => {
     });
   }
 
+  // Error no controlado
+  console.error('Error interno del servidor:', err.message);
+
   return res.status(500).json({
     estado: "error",
     mensaje: "Error interno del servidor"
