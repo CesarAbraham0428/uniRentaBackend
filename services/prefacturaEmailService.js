@@ -28,6 +28,7 @@ export async function enviarPrefacturaEmail({ estudianteUnidadId, detalle }) {
   const fechaCorteDate = detalle.fecha_corte
     ? new Date(detalle.fecha_corte)
     : new Date();
+
   const fechaCorteStr = new Intl.DateTimeFormat("es-MX", {
     day: "2-digit",
     month: "2-digit",
@@ -36,8 +37,11 @@ export async function enviarPrefacturaEmail({ estudianteUnidadId, detalle }) {
 
   const nombreUnidad = detalle.nombre_unidad || "Unidad asignada";
   const precioBase = Number(detalle.precio_base || 0);
-  const servicios = Array.isArray(detalle.servicios) ? detalle.servicios : [];
-  const total = Number(detalle.precio_total || precioBase);
+
+  // SOLO servicios futuros (los que definiste en el servicio del backend)
+  const serviciosFuturos = Array.isArray(detalle.servicios_futuros)
+    ? detalle.servicios_futuros
+    : [];
 
   const getServicioNombre = (srv) =>
     srv.nombre || srv.descripcion || "Servicio extra";
@@ -45,6 +49,58 @@ export async function enviarPrefacturaEmail({ estudianteUnidadId, detalle }) {
   const getServicioPrecio = (srv) =>
     Number(srv.precio ?? srv.precio_snapshot ?? srv.monto ?? 0);
 
+  // Suma de los servicios futuros
+  const totalServiciosFuturos = serviciosFuturos.reduce(
+    (sum, s) => sum + getServicioPrecio(s),
+    0
+  );
+
+  // TOTAL = unidad + servicios futuros
+  const totalEstimado = precioBase + totalServiciosFuturos;
+
+  // ---------------- TEXTO PLANO ----------------
+  const descripcionCorte = `
+Esta es tu pre-factura de la unidad y los servicios extra que tendrás activos en tu siguiente fecha de corte: ${fechaCorteStr}.
+  `.trim();
+
+  const subject = "Pre-factura de tus servicios UniRenta";
+
+  const text = `Hola ${nombre},
+
+${descripcionCorte}
+
+Unidad:
+- ${nombreUnidad} - $${precioBase.toFixed(2)} MXN / mes
+
+Servicios extra para el próximo corte:
+${
+  serviciosFuturos.length > 0
+    ? serviciosFuturos
+        .map(
+          (s) =>
+            `- ${getServicioNombre(s)}: $${getServicioPrecio(s).toFixed(
+              2
+            )} MXN / mes`
+        )
+        .join("\n")
+    : "(Sin servicios extra para el próximo corte)"
+}
+
+TOTAL estimado (unidad + servicios extra): $${totalEstimado.toFixed(
+    2
+  )} MXN / mes
+
+NOTA:
+- Esta es una PRE-FACTURA informativa.
+- Los servicios listados se cobrarán a partir del próximo corte indicado.
+- Si realizaste cambios recientemente (agregaste o quitaste servicios),
+  esta pre-factura reemplaza cualquier correo anterior, así que
+  por favor ignora las versiones viejas y considera solo esta última.
+
+${appName}
+`;
+
+  // ---------------- HTML (MISMO DISEÑO QUE ME COMPARTISTE) ----------------
   let filasServiciosHtml = `
     <tr>
       <td style="padding:4px 8px;">
@@ -56,7 +112,7 @@ export async function enviarPrefacturaEmail({ estudianteUnidadId, detalle }) {
     </tr>
   `;
 
-  for (const srv of servicios) {
+  for (const srv of serviciosFuturos) {
     const nombreSrv = getServicioNombre(srv);
     const precioSrv = getServicioPrecio(srv);
 
@@ -70,40 +126,17 @@ export async function enviarPrefacturaEmail({ estudianteUnidadId, detalle }) {
     `;
   }
 
-  const descripcionCorte = `
-Esta es tu pre-factura de la unidad y los servicios extra que tendrás activos en tu siguiente fecha de corte: ${fechaCorteStr}.
-  `.trim();
-
-  const subject = "Pre-factura de tus servicios UniRenta";
-
-  const text = `Hola ${nombre},
-
-${descripcionCorte}
-
-Unidad: ${nombreUnidad} - $${precioBase.toFixed(2)} MXN / mes
-${
-  servicios.length > 0
-    ? servicios
-        .map(
-          (s) =>
-            `- ${getServicioNombre(s)}: $${getServicioPrecio(s).toFixed(
-              2
-            )} MXN / mes`
-        )
-        .join("\n")
-    : "(Sin servicios extra)"
-}
-
-TOTAL estimado: $${total.toFixed(2)} MXN / mes
-
-NOTA:
-- Esta es una PRE-FACTURA informativa.
-- Si realizaste cambios recientemente (agregaste o quitaste servicios),
-  esta pre-factura reemplaza cualquier correo anterior, así que
-  por favor ignora las versiones viejas y considera solo esta última.
-
-${appName}
-`;
+  // Fila de TOTAL estimado (unidad + servicios futuros)
+  filasServiciosHtml += `
+    <tr>
+      <td style="padding:8px 8px; border-top:1px solid #ddd; font-weight:bold;">
+        TOTAL estimado (unidad + servicios extra)
+      </td>
+      <td style="padding:8px 8px; border-top:1px solid #ddd; text-align:right; font-weight:bold;">
+        $${totalEstimado.toFixed(2)} MXN / mes
+      </td>
+    </tr>
+  `;
 
   const html = `
 <!DOCTYPE html>
@@ -153,20 +186,12 @@ ${appName}
         </thead>
         <tbody>
           ${filasServiciosHtml}
-          <tr>
-            <td style="padding:8px 8px; border-top:1px solid #ddd; font-weight:bold;">
-              TOTAL estimado
-            </td>
-            <td style="padding:8px 8px; border-top:1px solid #ddd; text-align:right; font-weight:bold;">
-              $${total.toFixed(2)} MXN / mes
-            </td>
-          </tr>
         </tbody>
       </table>
 
       <p style="margin:8px 0 0 0; font-size:12px; color:#999; line-height:1.5;">
         <strong>Nota:</strong> Esta es una <strong>pre-factura informativa</strong>. El cobro real se realizará en la fecha de corte indicada,
-        de acuerdo con los servicios activos en ese momento.
+        de acuerdo con la unidad y los servicios extra que tengas activos en ese momento.
         <br />
         Si realizaste cambios recientemente (agregaste o quitaste servicios),
         esta pre-factura reemplaza cualquier correo anterior. Por favor,

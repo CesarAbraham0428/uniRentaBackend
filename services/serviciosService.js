@@ -49,15 +49,8 @@ const getFechaUnionYProximoCorte = async (
     : new Date(refDate);
 
   let proximoCorte = new Date(fechaUnion);
-
-  // Si fechaUnion está en el futuro (por timezone), forzar al menos 1 mes
-  if (fechaUnion > refDate) {
+  while (proximoCorte <= refDate) {
     proximoCorte = addMonths(proximoCorte, 1);
-  } else {
-    // Avanzar hasta encontrar el siguiente corte en el futuro
-    while (proximoCorte <= refDate) {
-      proximoCorte = addMonths(proximoCorte, 1);
-    }
   }
 
   return { fechaUnion, proximoCorte };
@@ -100,39 +93,47 @@ class ServiciosService {
       throw new Error("Unidad asociada no encontrada");
 
     const now = new Date();
-    const { fechaUnion, proximoCorte } = await getFechaUnionYProximoCorte(
+
+    // Fecha de corte real usada para la pre-factura
+    const { proximoCorte } = await getFechaUnionYProximoCorte(
       estudianteUnidadId,
       now
     );
-    const fechaFactura = proximoCorte; // pre-factura para el siguiente corte
 
-    const serviciosVigentes = (estudianteUnidad.servicios || []).filter(
-      (srv) => {
-        const link = srv.estudiante_unidad_servicio || {};
-        const fi = link.fecha_inicio ? new Date(link.fecha_inicio) : null;
-        const ff = link.fecha_fin ? new Date(link.fecha_fin) : null;
+    const fechaFactura = proximoCorte;
 
-        // sin fecha_inicio no se puede cobrar
-        if (!fi) return false;
+    const servicios = estudianteUnidad.servicios || [];
 
-        // debe haber iniciado a más tardar en la fecha de factura
-        // NOTA: Los servicios agregados el mismo día de union se cobran desde el primer corte
-        if (fi > fechaFactura) return false;
+    // Servicios que SÍ se cobran en este corte
+    const serviciosVigentes = [];
 
-        // si tiene fecha_fin y es <= a la fecha de factura, ya no se cobra
-        if (ff && ff <= fechaFactura) return false;
+    // Servicios que el usuario agregó, pero empiezan en un corte futuro
+    const serviciosFuturos = [];
 
-        // fi <= fechaFactura y (ff null o > fechaFactura) => activo para ese corte
-        return true;
+    for (const srv of servicios) {
+      const link = srv.estudiante_unidad_servicio || {};
+      const fi = link.fecha_inicio ? new Date(link.fecha_inicio) : null;
+      const ff = link.fecha_fin ? new Date(link.fecha_fin) : null;
+
+      if (!fi) continue;
+
+      const seCobraEnEsteCorte =
+        fi <= fechaFactura && (!ff || ff > fechaFactura);
+
+      if (seCobraEnEsteCorte) {
+        serviciosVigentes.push(srv);
+      } else {
+        // No se cobra en este corte, pero existe → servicio futuro
+        serviciosFuturos.push(srv);
       }
-    );
+    }
 
+    // Se calcula el precio SOLO con los vigentes
     let asignacionConPrecio = new AsignacionPrecio(
       estudianteUnidad,
       estudianteUnidad.unidad
     );
 
-    // aplicar decoradores por cada servicio vigente para ese corte
     for (const servicio of serviciosVigentes) {
       asignacionConPrecio = new ServicioDecorator(
         asignacionConPrecio,
@@ -143,10 +144,18 @@ class ServiciosService {
 
     const descripcion = asignacionConPrecio.getDescripcion();
 
-    // añadimos la fecha de corte usada para esta pre-factura
+    // Se le agregan los futuros por separado
     return {
       ...descripcion,
       fecha_corte: fechaFactura.toISOString(),
+
+      servicios_futuros: serviciosFuturos.map((s) => ({
+        id: s.id,
+        nombre: s.nombre,
+        fecha_inicio: s.estudiante_unidad_servicio?.fecha_inicio,
+        precio: Number(s.estudiante_unidad_servicio?.precio_snapshot || 0),
+        estado: s.estudiante_unidad_servicio?.estado,
+      })),
     };
   }
 
