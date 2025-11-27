@@ -326,13 +326,13 @@ class PropiedadService {
     try {
       const nuevaPropiedad = await crearPropiedad(datosPropiedad, transaccion);
 
-      const { rutaFinal } = await documentoService.procesarDocumento(
+      const { rutaArchivoFinal } = await documentoService.procesarDocumento(
         rutaDocumento,
         tipo_id
       );
 
-      const nuevoDocumento = await documentoService.guardarDocumento(
-        rutaFinal,
+      const nuevoDocumento = await documentoService.guardarDocumentoEnBaseDatos(
+        rutaArchivoFinal,
         tipo_id,
         null,
         nuevaPropiedad.id,

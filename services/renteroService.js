@@ -28,14 +28,14 @@ export const registrarRentero = async (rutaDocumento, tipo_id, datosRentero) => 
     const nuevoRentero = await crearRentero(datosRentero, transaccion);
     const nombreCompletoFormulario = [datosRentero.nombre, datosRentero.apellido].filter(Boolean).join(' ').trim();
     const opcionesValidacionDocumento = nombreCompletoFormulario ? { nombreFormulario: nombreCompletoFormulario } : {};
-    const { rutaFinal } = await documentoService.procesarDocumento(
+    const { rutaArchivoFinal } = await documentoService.procesarDocumento(
       rutaDocumento,
       tipo_id,
       opcionesValidacionDocumento
     );
 
-    const nuevoDocumento = await documentoService.guardarDocumento(
-      rutaFinal, 
+    const nuevoDocumento = await documentoService.guardarDocumentoEnBaseDatos(
+      rutaArchivoFinal, 
       tipo_id, 
       nuevoRentero.id, 
       null, 
