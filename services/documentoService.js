@@ -3,25 +3,14 @@ import TipoDocumento from '../models/tipo_documento.js';
 import { ProxyDocumento } from '../utils/ocr/proxyDocumento.js';
 import { moverArchivo, limpiarArchivoTemporal } from '../utils/files/manejadorArchivos.js';
 
-// Instancia global del proxy con caché
-const proxyValidador = new ProxyDocumento({
-  configReal: {
-    intentosMaximos: 3,
-    timeout: 30000
-  },
-  configCache: {
-    ttlInvalido: 180,
-    ttlParcial: 180,
-    useClones: false,
-    enableStats: false
-  }
-});
+// Instancia global del proxy
+const proxyValidador = new ProxyDocumento();
 
-export const procesarDocumento = async (rutaDocumento, tipo_id, opcionesValidacion = {}) => {
+export const procesarDocumento = async (rutaArchivoDocumento, idTipoDocumento, opcionesValidacion = {}) => {
   try {
     const resultadoValidacion = await proxyValidador.validarDocumento(
-      rutaDocumento, 
-      tipo_id, 
+      rutaArchivoDocumento, 
+      idTipoDocumento, 
       opcionesValidacion
     );
     
@@ -43,52 +32,52 @@ export const procesarDocumento = async (rutaDocumento, tipo_id, opcionesValidaci
       throw error;
     }
 
-    const carpetaDestino = obtenerCarpetaDestino(tipo_id);
-    const rutaFinal = moverArchivo(rutaDocumento, carpetaDestino);
+    const carpetaDestino = obtenerCarpetaDestinoPorTipo(idTipoDocumento);
+    const rutaFinalArchivo = moverArchivo(rutaArchivoDocumento, carpetaDestino);
     
     return { 
-      rutaFinal,
-      validacion: resultadoValidacion.toPlainObject()
+      rutaArchivoFinal: rutaFinalArchivo,
+      validacion: resultadoValidacion.aObjetoPlano()
     };
   } catch (error) {
-    limpiarArchivoTemporal(rutaDocumento);
+    limpiarArchivoTemporal(rutaArchivoDocumento);
     throw error;
   }
 };
 
-export const guardarDocumento = async (
-  rutaFinal, 
-  tipo_id, 
-  renteroId = null, 
-  propiedadId = null, 
+export const guardarDocumentoEnBaseDatos = async (
+  rutaArchivoFinal, 
+  idTipoDocumento, 
+  idRentero = null, 
+  idPropiedad = null, 
   transaccion = null
 ) => {
   const opciones = transaccion ? { transaction: transaccion } : {};
   
   return await Documento.create({
-    ruta_archivo: rutaFinal,
-    tipo_id,
-    rentero_id: renteroId,
-    propiedad_id: propiedadId
+    ruta_archivo: rutaArchivoFinal,
+    tipo_id: idTipoDocumento,
+    rentero_id: idRentero,
+    propiedad_id: idPropiedad
   }, opciones);
 };
 
-const obtenerCarpetaDestino = (tipo_id) => {
-  return Number(tipo_id) === 1 ? 'rentero/identidad' : 'rentero/propiedad';
+const obtenerCarpetaDestinoPorTipo = (idTipoDocumento) => {
+  return Number(idTipoDocumento) === 1 ? 'rentero/identidad' : 'rentero/propiedad';
 };
 
-export const obtenerTipoDocumentoPorID = async (id) => {
+export const obtenerTipoDocumentoPorIdentificador = async (id) => {
   return await TipoDocumento.findByPk(id);
 };
 
-export const obtenerDocumentos = async () => {
+export const obtenerTodosTiposDocumento = async () => {
   return await TipoDocumento.findAll();
 };
 
-export const verificarCacheDocumento = async (rutaArchivo) => {
-  return await proxyValidador.estaEnCache(rutaArchivo);
+export const verificarDocumentoEnCache = async (rutaArchivo) => {
+  return await proxyValidador.verificarArchivoEnCache(rutaArchivo);
 };
 
-export const limpiarCacheValidacion = () => {
-  proxyValidador.limpiarCache();
+export const limpiarCacheValidacionDocumentos = () => {
+  proxyValidador.limpiarTodaLaCache();
 };
