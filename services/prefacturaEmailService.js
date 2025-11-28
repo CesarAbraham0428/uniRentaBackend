@@ -1,3 +1,4 @@
+// services/prefacturaEmailService.js
 import nodemailer from "nodemailer";
 import EstudianteUnidad from "../models/estudiante_unidad.js";
 import Estudiante from "../models/estudiante.js";
@@ -38,7 +39,10 @@ export async function enviarPrefacturaEmail({ estudianteUnidadId, detalle }) {
   const nombreUnidad = detalle.nombre_unidad || "Unidad asignada";
   const precioBase = Number(detalle.precio_base || 0);
 
-  // SOLO servicios futuros (los que definiste en el servicio del backend)
+  const serviciosVigentes = Array.isArray(detalle.servicios_vigentes)
+    ? detalle.servicios_vigentes
+    : [];
+
   const serviciosFuturos = Array.isArray(detalle.servicios_futuros)
     ? detalle.servicios_futuros
     : [];
@@ -49,101 +53,156 @@ export async function enviarPrefacturaEmail({ estudianteUnidadId, detalle }) {
   const getServicioPrecio = (srv) =>
     Number(srv.precio ?? srv.precio_snapshot ?? srv.monto ?? 0);
 
-  // Suma de los servicios futuros
-  const totalServiciosFuturos = serviciosFuturos.reduce(
+  const totalExtrasVigentes = serviciosVigentes.reduce(
     (sum, s) => sum + getServicioPrecio(s),
     0
   );
 
-  // TOTAL = unidad + servicios futuros
-  const totalEstimado = precioBase + totalServiciosFuturos;
+  const totalExtrasFuturos = serviciosFuturos.reduce(
+    (sum, s) => sum + getServicioPrecio(s),
+    0
+  );
+
+  // Lo que paga hoy (unidad + extras vigentes)
+  const totalActual = precioBase + totalExtrasVigentes;
+  // Lo que pagará en el siguiente corte con los nuevos servicios
+  const totalConCambios = precioBase + totalExtrasVigentes + totalExtrasFuturos;
+  const diferencia = totalConCambios - totalActual;
+
+  // Si no hay servicios futuros, asumimos que ya todo es vigente → "Factura"
+  const esFactura = serviciosFuturos.length === 0;
+
+  const tituloCorreo = esFactura
+    ? "Factura de tus servicios extra"
+    : "Pre-factura de tus servicios extra";
+
+  const subject = esFactura
+    ? "Factura de tus servicios UniRenta"
+    : "Pre-factura de tus servicios UniRenta";
 
   // ---------------- TEXTO PLANO ----------------
-  const descripcionCorte = `
-Esta es tu pre-factura de la unidad y los servicios extra que tendrás activos en tu siguiente fecha de corte: ${fechaCorteStr}.
-  `.trim();
+  const lineaDescripcionTexto = esFactura
+    ? `Esta es tu factura de la unidad y los servicios extra que se están cobrando en tu fecha de corte: Hoy.`
+    : `Esta es tu pre-factura de la unidad y los servicios extra que tendrás activos en tu siguiente fecha de corte: ${fechaCorteStr}.`;
 
-  const subject = "Pre-factura de tus servicios UniRenta";
+  const textoVigentes =
+    serviciosVigentes.length > 0
+      ? serviciosVigentes
+          .map(
+            (s) =>
+              `- ${getServicioNombre(s)}: $${getServicioPrecio(s).toFixed(
+                2
+              )} MXN / mes`
+          )
+          .join("\n")
+      : "(Sin servicios extra vigentes actualmente)";
+
+  const textoFuturos =
+    serviciosFuturos.length > 0
+      ? serviciosFuturos
+          .map(
+            (s) =>
+              `- ${getServicioNombre(s)}: $${getServicioPrecio(s).toFixed(
+                2
+              )} MXN / mes`
+          )
+          .join("\n")
+      : "(No hay nuevos servicios extra para el próximo corte)";
 
   const text = `Hola ${nombre},
 
-${descripcionCorte}
+${lineaDescripcionTexto}
 
-Unidad:
+Unidad base:
 - ${nombreUnidad} - $${precioBase.toFixed(2)} MXN / mes
 
-Servicios extra para el próximo corte:
-${
-  serviciosFuturos.length > 0
-    ? serviciosFuturos
-        .map(
-          (s) =>
-            `- ${getServicioNombre(s)}: $${getServicioPrecio(s).toFixed(
-              2
-            )} MXN / mes`
-        )
-        .join("\n")
-    : "(Sin servicios extra para el próximo corte)"
-}
+Lo que pagas actualmente (unidad + servicios vigentes):
+${textoVigentes}
 
-TOTAL estimado (unidad + servicios extra): $${totalEstimado.toFixed(
-    2
-  )} MXN / mes
+Total actual: $${totalActual.toFixed(2)} MXN / mes
+
+Lo que pagarás con los nuevos servicios (unidad + vigentes + futuros):
+${textoFuturos}
+
+Total con nuevos servicios: $${totalConCambios.toFixed(2)} MXN / mes
+Diferencia aproximada: $${diferencia.toFixed(2)} MXN / mes
 
 NOTA:
-- Esta es una PRE-FACTURA informativa.
-- Los servicios listados se cobrarán a partir del próximo corte indicado.
+- Esta es una ${esFactura ? "FACTURA" : "PRE-FACTURA"} informativa.
 - Si realizaste cambios recientemente (agregaste o quitaste servicios),
-  esta pre-factura reemplaza cualquier correo anterior, así que
+  esta versión reemplaza cualquier correo anterior, así que
   por favor ignora las versiones viejas y considera solo esta última.
 
 ${appName}
 `;
 
-  // ---------------- HTML (MISMO DISEÑO QUE ME COMPARTISTE) ----------------
-  let filasServiciosHtml = `
-    <tr>
-      <td style="padding:4px 8px;">
-        Unidad: <strong>${nombreUnidad}</strong>
-      </td>
-      <td style="padding:4px 8px; text-align:right;">
-        $${precioBase.toFixed(2)} MXN / mes
-      </td>
-    </tr>
-  `;
+  // ---------------- HTML ----------------
 
-  for (const srv of serviciosFuturos) {
-    const nombreSrv = getServicioNombre(srv);
-    const precioSrv = getServicioPrecio(srv);
+  // Tabla de servicios vigentes
+  let filasVigentesHtml = "";
 
-    filasServiciosHtml += `
+  if (serviciosVigentes.length > 0) {
+    for (const srv of serviciosVigentes) {
+      const nombreSrv = getServicioNombre(srv);
+      const precioSrv = getServicioPrecio(srv);
+
+      filasVigentesHtml += `
+        <tr>
+          <td style="padding:4px 8px;">${nombreSrv}</td>
+          <td style="padding:4px 8px; text-align:right;">
+            $${precioSrv.toFixed(2)} MXN / mes
+          </td>
+        </tr>
+      `;
+    }
+  } else {
+    filasVigentesHtml = `
       <tr>
-        <td style="padding:4px 8px;">${nombreSrv}</td>
-        <td style="padding:4px 8px; text-align:right;">
-          $${precioSrv.toFixed(2)} MXN / mes
+        <td colspan="2" style="padding:4px 8px; text-align:left; color:#777; font-size:13px;">
+          (Sin servicios extra vigentes actualmente)
         </td>
       </tr>
     `;
   }
 
-  // Fila de TOTAL estimado (unidad + servicios futuros)
-  filasServiciosHtml += `
-    <tr>
-      <td style="padding:8px 8px; border-top:1px solid #ddd; font-weight:bold;">
-        TOTAL estimado (unidad + servicios extra)
-      </td>
-      <td style="padding:8px 8px; border-top:1px solid #ddd; text-align:right; font-weight:bold;">
-        $${totalEstimado.toFixed(2)} MXN / mes
-      </td>
-    </tr>
-  `;
+  // Tabla de servicios futuros
+  let filasFuturosHtml = "";
+
+  if (serviciosFuturos.length > 0) {
+    for (const srv of serviciosFuturos) {
+      const nombreSrv = getServicioNombre(srv);
+      const precioSrv = getServicioPrecio(srv);
+
+      filasFuturosHtml += `
+        <tr>
+          <td style="padding:4px 8px;">${nombreSrv}</td>
+          <td style="padding:4px 8px; text-align:right;">
+            $${precioSrv.toFixed(2)} MXN / mes
+          </td>
+        </tr>
+      `;
+    }
+  } else {
+    filasFuturosHtml = `
+      <tr>
+        <td colspan="2" style="padding:4px 8px; text-align:left; color:#777; font-size:13px;">
+          (No hay nuevos servicios extra para el próximo corte)
+        </td>
+      </tr>
+    `;
+  }
+
+  const lineaDescripcionHtml = esFactura
+    ? `Esta es tu factura de la unidad y los servicios extra que se están cobrando en tu fecha de corte: <strong>Hoy</strong>.`
+    : `Esta es tu pre-factura de la unidad y los servicios extra que tendrás activos en tu siguiente fecha de corte:
+        <strong>${fechaCorteStr}</strong>.`;
 
   const html = `
 <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Pre-factura ${appName}</title>
+  <title>${tituloCorreo} - ${appName}</title>
   <link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Playwrite+DE+SAS&display=swap" rel="stylesheet">
 </head>
 <body style="margin:0; padding:0; font-family: Arial, Helvetica, sans-serif; background-color:#f6f6f6;">
@@ -157,7 +216,7 @@ ${appName}
       </p>
 
       <h2 style="margin:8px 0 12px 0; font-size:20px; color:#333;">
-        Pre-factura de tus servicios extra
+        ${tituloCorreo}
       </h2>
 
       <p style="margin:0 0 8px 0; font-size:14px; color:#333;">
@@ -165,19 +224,24 @@ ${appName}
       </p>
 
       <p style="margin:0 0 12px 0; font-size:14px; color:#333; line-height:1.5;">
-        Esta es tu pre-factura de la unidad y los servicios extra que tendrás activos en tu siguiente fecha de corte:
-        <strong>${fechaCorteStr}</strong>.
+        ${lineaDescripcionHtml}
       </p>
 
-      <p style="margin:0 0 12px 0; font-size:13px; color:#999;">
-        Unidad: <strong>${nombreUnidad}</strong>
+      <!-- Unidad base (solo una vez) -->
+      <p style="margin:0 0 12px 0; font-size:14px; color:#333;">
+        Unidad: <strong>${nombreUnidad}</strong> — 
+        <strong>$${precioBase.toFixed(2)} MXN / mes</strong>
       </p>
 
-      <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse; margin-bottom:12px;">
+      <!-- Sección: lo que paga actualmente -->
+      <h3 style="margin:12px 0 6px 0; font-size:16px; color:#333;">
+        Lo que pagas actualmente (unidad + servicios vigentes)
+      </h3>
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse; margin-bottom:8px;">
         <thead>
           <tr>
             <th align="left" style="padding:6px 8px; border-bottom:1px solid #ddd; font-size:13px; color:#555;">
-              Concepto
+              Servicio vigente
             </th>
             <th align="right" style="padding:6px 8px; border-bottom:1px solid #ddd; font-size:13px; color:#555;">
               Importe
@@ -185,17 +249,62 @@ ${appName}
           </tr>
         </thead>
         <tbody>
-          ${filasServiciosHtml}
+          ${filasVigentesHtml}
+          <tr>
+            <td style="padding:8px 8px; border-top:1px solid #ddd; font-weight:bold;">
+              Total actual (unidad + vigentes)
+            </td>
+            <td style="padding:8px 8px; border-top:1px solid #ddd; text-align:right; font-weight:bold;">
+              $${totalActual.toFixed(2)} MXN / mes
+            </td>
+          </tr>
         </tbody>
       </table>
 
-      <p style="margin:8px 0 0 0; font-size:12px; color:#999; line-height:1.5;">
-        <strong>Nota:</strong> Esta es una <strong>pre-factura informativa</strong>. El cobro real se realizará en la fecha de corte indicada,
+      <!-- Sección: lo que pagará con los nuevos servicios -->
+      <h3 style="margin:16px 0 6px 0; font-size:16px; color:#333;">
+        Lo que pagarás con los nuevos servicios (unidad + vigentes + futuros)
+      </h3>
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse; margin-bottom:8px;">
+        <thead>
+          <tr>
+            <th align="left" style="padding:6px 8px; border-bottom:1px solid #ddd; font-size:13px; color:#555;">
+              Servicio futuro
+            </th>
+            <th align="right" style="padding:6px 8px; border-bottom:1px solid #ddd; font-size:13px; color:#555;">
+              Importe
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          ${filasFuturosHtml}
+          <tr>
+            <td style="padding:8px 8px; border-top:1px solid #ddd; font-weight:bold;">
+              Total con nuevos servicios
+            </td>
+            <td style="padding:8px 8px; border-top:1px solid #ddd; text-align:right; font-weight:bold;">
+              $${totalConCambios.toFixed(2)} MXN / mes
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <p style="margin:4px 0 0 0; font-size:12px; color:#555;">
+        Diferencia aproximada respecto a lo que pagas hoy:
+        <strong>$${diferencia.toFixed(2)} MXN / mes</strong>
+      </p>
+
+      <p style="margin:12px 0 0 0; font-size:12px; color:#999; line-height:1.5;">
+        <strong>Nota:</strong> Esta es una <strong>${
+          esFactura ? "factura" : "pre-factura"
+        } informativa</strong>. 
+        El cobro real se realizará en la fecha de corte indicada,
         de acuerdo con la unidad y los servicios extra que tengas activos en ese momento.
         <br />
-        Si realizaste cambios recientemente (agregaste o quitaste servicios),
-        esta pre-factura reemplaza cualquier correo anterior. Por favor,
-        ignora las pre-facturas viejas y considera únicamente esta última versión.
+        Si vuelves a generar otra ${
+          esFactura ? "factura" : "pre-factura"
+        } (por ejemplo, al agregar o quitar servicios), 
+        por favor ignora las versiones anteriores y considera únicamente esta última.
       </p>
     </div>
 

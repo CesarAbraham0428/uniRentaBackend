@@ -94,20 +94,16 @@ class ServiciosService {
 
     const now = new Date();
 
-    // Fecha de corte real usada para la pre-factura
+    // Fecha de corte usada para la pre-factura
     const { proximoCorte } = await getFechaUnionYProximoCorte(
       estudianteUnidadId,
       now
     );
 
     const fechaFactura = proximoCorte;
-
     const servicios = estudianteUnidad.servicios || [];
 
-    // Servicios que SÍ se cobran en este corte
     const serviciosVigentes = [];
-
-    // Servicios que el usuario agregó, pero empiezan en un corte futuro
     const serviciosFuturos = [];
 
     for (const srv of servicios) {
@@ -117,18 +113,20 @@ class ServiciosService {
 
       if (!fi) continue;
 
-      const seCobraEnEsteCorte =
-        fi <= fechaFactura && (!ff || ff > fechaFactura);
+      // 1) Si el servicio terminó ANTES o EXACTAMENTE en la fecha de corte → ya no aparece
+      if (ff && ff <= fechaFactura) {
+        continue;
+      }
 
-      if (seCobraEnEsteCorte) {
+      // 2) Si ya inició a más tardar en la fecha de corte → VIGENTE (se cobra en este corte)
+      if (fi <= fechaFactura) {
         serviciosVigentes.push(srv);
       } else {
-        // No se cobra en este corte, pero existe → servicio futuro
+        // 3) Si empieza DESPUÉS de la fecha de corte → FUTURO
         serviciosFuturos.push(srv);
       }
     }
 
-    // Se calcula el precio SOLO con los vigentes
     let asignacionConPrecio = new AsignacionPrecio(
       estudianteUnidad,
       estudianteUnidad.unidad
@@ -144,11 +142,15 @@ class ServiciosService {
 
     const descripcion = asignacionConPrecio.getDescripcion();
 
-    // Se le agregan los futuros por separado
-    return {
-      ...descripcion,
-      fecha_corte: fechaFactura.toISOString(),
+    const serviciosDescripcion = Array.isArray(descripcion.servicios)
+      ? descripcion.servicios
+      : [];
 
+    // Construimos el objeto final:
+    const resultado = {
+      ...descripcion,
+      servicios_vigentes: serviciosDescripcion,
+      fecha_corte: fechaFactura.toISOString(),
       servicios_futuros: serviciosFuturos.map((s) => ({
         id: s.id,
         nombre: s.nombre,
@@ -157,6 +159,11 @@ class ServiciosService {
         estado: s.estudiante_unidad_servicio?.estado,
       })),
     };
+
+    // opcional: eliminamos la key vieja "servicios" para que el JSON quede limpio
+    delete resultado.servicios;
+
+    return resultado;
   }
 
   /**
